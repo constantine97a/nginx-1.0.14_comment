@@ -170,7 +170,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     //根据数量初始化，初始化shared_memory
     if (ngx_list_init(&cycle->shared_memory, pool, n, sizeof(ngx_shm_zone_t))
-        != NGX_OK)
+         != NGX_OK)
     {
         ngx_destroy_pool(pool);
         return NULL;
@@ -237,7 +237,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
         //如果create_conf存在，则直接创建config
         if (module->create_conf) {
-			//core的create_conf回调函数，实际上指向ngx_core_module_crate_conf
+			//core的create_conf回调函数，实际上指向ngx_core_module_create_conf
             rv = module->create_conf(cycle); //对每个模块调用模块内部的钩子ngx_xxx_module_create_conf，当然第一个模块是core
             if (rv == NULL) {
                 ngx_destroy_pool(pool);

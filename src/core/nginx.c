@@ -3,7 +3,7 @@
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
  */
-
+// Core Module
 
 #include <ngx_config.h>
 #include <ngx_core.h>
@@ -159,14 +159,14 @@ static ngx_command_t  ngx_core_commands[] = {
       ngx_null_command  // 指令数组结束
 };
 
-
+//核心模块上下文
 static ngx_core_module_t  ngx_core_module_ctx = {
     ngx_string("core"),              // 模块名字
     ngx_core_module_create_conf,     // 创建配置结构
     ngx_core_module_init_conf        // 初始化配置结构
 };
 
-
+//核心模块结构初始化
 ngx_module_t  ngx_core_module = {          // 模块定义
     NGX_MODULE_V1,
     &ngx_core_module_ctx,                  /* module context */
@@ -210,7 +210,7 @@ static char **ngx_os_environ;
 int ngx_cdecl    //ngx_cdecl宏用于显式声明应使用的调用约定，在跨平台移植时有用，在linux版本的nginx程序中，该宏被定义为空
 main(int argc, char *const *argv)
 {
-    ngx_int_t         i;  
+    ngx_int_t         i;
     ngx_log_t        *log;   //保存日志结构
     ngx_cycle_t      *cycle, init_cycle; //初始化时的主结构体，在平滑升级服务器时，init_cycle负责升级前的信息,cycle负责升级后的信息
     ngx_core_conf_t  *ccf; //保存配置上下文
@@ -334,7 +334,7 @@ main(int argc, char *const *argv)
     if (ngx_crc32_table_init() != NGX_OK) {
         return 1;
     }
-     // 继承sockets,继承来的socket将会放到init_cycle的listening数组
+    // 继承sockets,继承来的socket将会放到init_cycle的listening数组
 	//继承的原因：在nginx服务器升级的情况下，保证web服务的平滑过渡，新的nginx能够继承旧nginx打开的socket
     if (ngx_add_inherited_sockets(&init_cycle) != NGX_OK) {
         return 1;

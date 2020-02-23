@@ -81,11 +81,29 @@ ngx_signal_t  signals[] = {
     { 0, NULL, "", NULL }
 };
 
-/*master进程通过调用ngx_spwan_process创建工作进程，其中proc指针指向工作进程要执行的具体函数*/
+/***
+ * master进程通过调用ngx_spwan_process创建工作进程，其中proc指针指向工作进程要执行的具体函数
+ * 函数的主要功能是：
+ * 1 有一个ngx_processes全局数组，包含了所有的存货的子进程，这里会fork出来的子进程放入到相应的位置。并设置这个进程的相关属性。
+   2 创建socketpair，并设置相关属性。
+   3 在子进程中执行传递进来的函数。
+   需要参考 ngx_process_t ,该类型封装process进程的基本信息
+ * @param cycle
+ * @param proc
+ * @param data
+ * @param name
+ * @param respawn
+ * @return
+ */
 ngx_pid_t
 ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
     char *name, ngx_int_t respawn)
 {
+    /*
+     * ngx_process_t  ngx_processes[NGX_MAX_PROCESSES];
+     * 全局的进程信息表
+     *
+     */
     u_long     on;
     ngx_pid_t  pid;
     //表示将要fork的子进程在ngx_process中的位置
@@ -218,15 +236,17 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
     ngx_processes[s].pid = pid;
     ngx_processes[s].exited = 0;
 
+    ///如果大于0,则说明我们确定了重启的子进程，因此下面的初始化就用已死的子进程的就够了。
     if (respawn >= 0) {
         return pid;
     }
-
+    ///开始初始化进程结构。
     ngx_processes[s].proc = proc;
     ngx_processes[s].data = data;
     ngx_processes[s].name = name;
     ngx_processes[s].exiting = 0;
 	//根据传入的respawn标记对nginx当前的进程进行相关设置，比如执行函数，运行状态。。。
+    ///设置相关状态。
     switch (respawn) {
 
     case NGX_PROCESS_NORESPAWN:
@@ -315,11 +335,17 @@ ngx_init_signals(ngx_log_t *log)
 
 //在nginx中，worker和master的交互，是通过流管道以及信号。
 //而master与外部的交互是通过信号来进行的,这个函数就是master处理信号的程序。
+/**
+ * 主要作用是接收到signo
+ * 判断是否是master process设置全局变量，在cycle循环中根据这些变量做动作
+ * 判断是否是worker process 设置全部变脸，在worker的cycle循环中根据这些变量做动作
+ * @param signo
+ */
 void
 ngx_signal_handler(int signo)
 {
-    char            *action;
-    ngx_int_t        ignore;
+    char            *action;//just for logging
+    ngx_int_t        ignore;//flag for ignore signo
     ngx_err_t        err;
     ngx_signal_t    *sig;
 
@@ -381,14 +407,18 @@ ngx_signal_handler(int signo)
         //热代码替换
         case ngx_signal_value(NGX_CHANGEBIN_SIGNAL):
             if (getppid() > 1 || ngx_new_binary > 0) {
-
-                /*
+                /**
+                 * getppid() return the parent process of currentId ,so if ppid >0 it means
+                 * this is the latest new master process ,and old master may not shutdown(currently ,there are two master process)
+                 * SO ignore 'USR2' Signal
+                 */
+                /**
                  * Ignore the signal in the new binary if its parent is
                  * not the init process, i.e. the old binary's process
                  * is still running.  Or ignore the signal in the old binary's
                  * process if the new binary's process is already running.
                  */
-                /* 这里给出了详细的注释，更通俗一点来讲，就是说，进程现在是一个
+                /** 这里给出了详细的注释，更通俗一点来讲，就是说，进程现在是一个
                 * master(新的master进程)，但是当他的父进程old master还在运行的话，
                 * 这时收到了USR2信号，我们就忽略它，不然就成了新master里又要生成
                 * master。。。另外一种情况就是，old master已经开始了生成新master的过程

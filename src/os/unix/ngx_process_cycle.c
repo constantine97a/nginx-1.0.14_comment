@@ -375,7 +375,17 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
     }
 }
 
-/*启动工作进程：两个任务，1是设置父子进程通信，2是根据配置循环创建所有的工作进程*/
+/**
+ * 启动工作进程：两个任务，1是设置父子进程通信，2是根据配置循环创建所有的工作进程
+ *
+ **/
+/***
+ *
+ *
+ * @param cycle 当前的cycle
+ * @param n 需要启动的进程数目
+ * @param type
+ */
 static void
 ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n, ngx_int_t type)
 {
@@ -486,7 +496,7 @@ ngx_pass_open_channel(ngx_cycle_t *cycle, ngx_channel_t *ch)
 
         /* TODO: NGX_AGAIN */
 
-        //传递channel给其他子进程（主要是传递句柄）
+        //传递channel给其他子进程（主要是传递句柄）（主进程下发新建立子进程的Socket）
         ngx_write_channel(ngx_processes[i].channel[0],
                           ch, sizeof(ngx_channel_t), cycle->log);
     }

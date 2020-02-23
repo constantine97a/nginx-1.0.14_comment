@@ -535,7 +535,7 @@ extern ngx_os_io_t  ngx_io;
 #define ngx_send             ngx_io.send
 #define ngx_send_chain       ngx_io.send_chain
 
-
+//存储的0x码是字符串TNVE
 #define NGX_EVENT_MODULE      0x544E5645  /* "EVNT" */
 #define NGX_EVENT_CONF        0x02000000
 
