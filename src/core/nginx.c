@@ -583,7 +583,12 @@ tz_found:
     return env;
 }
 
-
+/**
+ * 进行代码替换， 这里是调用execve来执行新的代码
+ * @param cycle
+ * @param argv
+ * @return
+ */
 ngx_pid_t
 ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 {
