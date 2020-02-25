@@ -56,13 +56,13 @@ typedef struct {
 //该结构维护整个内存池的头部信息
 //Nginx使用内存池时总是只申请,不释放,使用完毕后直接destroy整个内存池
 struct ngx_pool_s {
-    ngx_pool_data_t       d;       //数据块
+    ngx_pool_data_t       d;       //数据块 #1
     size_t                max;     //数据块大小，即小块内存的最大值
-    ngx_pool_t           *current; //保存当前内存值
-    ngx_chain_t          *chain;   //可以挂一个chain结构
-    ngx_pool_large_t     *large;   //分配大块内存用，即超过max的内存请求
-    ngx_pool_cleanup_t   *cleanup; //挂载一些内存池释放的时候，同时释放的资源
-    ngx_log_t            *log;
+    ngx_pool_t           *current; //保存当前内存值  #1
+    ngx_chain_t          *chain;   //可以挂一个chain结构 #1
+    ngx_pool_large_t     *large;   //分配大块内存用，即超过max的内存请求 ,#1
+    ngx_pool_cleanup_t   *cleanup; //挂载一些内存池释放的时候，同时释放的资源 #N
+    ngx_log_t            *log;  //日志 #1
 };
 
 /*ngx_pool_cleanup_t中的*data成员通常指向ngx_pool_cleanup_file_t结构体*/

@@ -24,7 +24,7 @@ ngx_create_pool(size_t size, ngx_log_t *log)
     }
 
     p->d.last = (u_char *) p + sizeof(ngx_pool_t); //初始指向 ngx_pool_t 结构体后面
-    p->d.end = (u_char *) p + size; //整个结构的结尾后面
+    p->d.end = (u_char *) p + size; //整个结构的结尾后面，pool结构为|ngx_pool_t|--------(size - sizeof(ngx_pool_t))----------|
     p->d.next = NULL;
     p->d.failed = 0;
 
@@ -43,12 +43,11 @@ ngx_create_pool(size_t size, ngx_log_t *log)
 
 //销毁内存池
 void
-ngx_destroy_pool(ngx_pool_t *pool)
-{
-    ngx_pool_t          *p, *n;
-    ngx_pool_large_t    *l;
-    ngx_pool_cleanup_t  *c;
-	// 遍历节点上的各个节点
+ngx_destroy_pool(ngx_pool_t *pool) {
+    ngx_pool_t *p, *n;
+    ngx_pool_large_t *l;
+    ngx_pool_cleanup_t *c;
+    // 遍历节点上的各个节点
     for (c = pool->cleanup; c; c = c->next) {
         if (c->handler) {
             ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, pool->log, 0,
@@ -56,7 +55,7 @@ ngx_destroy_pool(ngx_pool_t *pool)
             c->handler(c->data);  //释放节点占用的内存
         }
     }
-	//对大块数据内存的清理
+    //对大块数据内存的清理
     for (l = pool->large; l; l = l->next) {
 
         ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, pool->log, 0, "free: %p", l->alloc);
@@ -83,7 +82,8 @@ ngx_destroy_pool(ngx_pool_t *pool)
     }
 
 #endif
-
+    //注意回归ngx_pool_t的design，ngx_pool_data_t 属于ngx_pool_t结构体内部的，所以free(p)会将
+    //ngx_pool_data_t一并清楚，但是内部的指向下一个ngx_pool_t的next指针需要额外的free操作
     for (p = pool, n = pool->d.next; /* void */; p = n, n = n->d.next) {
         ngx_free(p);
 
@@ -120,7 +120,7 @@ ngx_palloc(ngx_pool_t *pool, size_t size)
     u_char      *m;
     ngx_pool_t  *p;
 
-    if (size <= pool->max) {
+    if (size <= pool->max) {//判断待分配内存与max值
 
         p = pool->current;
 
@@ -128,7 +128,7 @@ ngx_palloc(ngx_pool_t *pool, size_t size)
             m = ngx_align_ptr(p->d.last, NGX_ALIGNMENT); // 对齐内存指针，加快存取速度
 
             if ((size_t) (p->d.end - m) >= size) {
-                p->d.last = m + size;
+                p->d.last = m + size;//在该节点指向的内存块中分配size大小的内存,主要是在data数据中移动last
 
                 return m;
             }
@@ -174,6 +174,14 @@ ngx_pnalloc(ngx_pool_t *pool, size_t size)
 }
 
 
+/**
+ * 创建新的ngx_pool_t并将其挂载在当前的ngx_pool_t链上
+ * 并在新的实例上分配所需的内存
+ *
+ * @param pool ngx_pool_t的尾端
+ * @param size 需要分批的内存大小
+ * @return 分配内存的地址u_char*
+ */
 static void *
 ngx_palloc_block(ngx_pool_t *pool, size_t size)
 {
