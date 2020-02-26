@@ -1059,7 +1059,13 @@ ngx_conf_log_error(ngx_uint_t level, ngx_conf_t *cf, ngx_err_t err,
                   cf->conf_file->file.name.data, cf->conf_file->line);
 }
 
-
+/***
+ * 标注的flag的command回调函数,只有两种flag选择 "on|off"
+ * @param cf
+ * @param cmd
+ * @param conf
+ * @return
+ */
 char *
 ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -1068,7 +1074,7 @@ ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t        *value;
     ngx_flag_t       *fp;
     ngx_conf_post_t  *post;
-
+    //计算flag在conf中offset
     fp = (ngx_flag_t *) (p + cmd->offset);
 
     if (*fp != NGX_CONF_UNSET) {

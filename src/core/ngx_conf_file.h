@@ -29,12 +29,22 @@
 #define NGX_CONF_TAKE7       0x00000080
 
 #define NGX_CONF_MAX_ARGS    8
-
+/**
+ * 表示可以携带一个参数或者两个参数
+ */
 #define NGX_CONF_TAKE12      (NGX_CONF_TAKE1|NGX_CONF_TAKE2)
+/**
+ * 命令可以携带一个参数或是三个参数
+ */
 #define NGX_CONF_TAKE13      (NGX_CONF_TAKE1|NGX_CONF_TAKE3)
 
+/**
+ * 命令可以携带二个参数或是三个参数
+ */
 #define NGX_CONF_TAKE23      (NGX_CONF_TAKE2|NGX_CONF_TAKE3)
-
+/**
+ * 命令可以携带一个两个或者三个参数
+ */
 #define NGX_CONF_TAKE123     (NGX_CONF_TAKE1|NGX_CONF_TAKE2|NGX_CONF_TAKE3)
 #define NGX_CONF_TAKE1234    (NGX_CONF_TAKE1|NGX_CONF_TAKE2|NGX_CONF_TAKE3   \
                               |NGX_CONF_TAKE4)

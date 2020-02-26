@@ -25,6 +25,10 @@ typedef struct ngx_queue_s  ngx_queue_t;
 
 //参考：
 //http://blog.csdn.net/livelylittlefish/article/details/6607324
+/**
+ * 从队列结构定义可以看出，nginx的队列结构里并没有其节点的数据内容。
+ * 在Linux中也是这么实现的，使用反向包含
+ */
 struct ngx_queue_s {
     ngx_queue_t  *prev;   //前一个
     ngx_queue_t  *next;   //下一个
@@ -35,7 +39,7 @@ struct ngx_queue_s {
     (q)->prev = q;                                                            \
     (q)->next = q
 
-//判断队列是否为空
+//判断队列是否为空,通过判断指正是否一致
 #define ngx_queue_empty(h)                                                    \
     (h == (h)->prev)
 

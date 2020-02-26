@@ -4496,7 +4496,13 @@ ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_ERROR;
 }
 
-
+/**
+ *
+ * @param cf
+ * @param cmd
+ * @param conf
+ * @return
+ */
 static char *
 ngx_http_core_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {

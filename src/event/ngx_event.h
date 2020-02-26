@@ -549,6 +549,15 @@ typedef struct {
     // 标志位，如果为1，则表示在接收到一个新连接事件时，一次性建立尽可能多的连接
     ngx_flag_t    multi_accept;
     //标识位，为1表示启用负载均衡锁
+    /**
+     * 是否打开accept锁
+     * 语法：accept_mutex[on|off]
+     * 默认：accept_mutext on;
+     * accept_mutex是Nginx的负载均衡锁，accept_mutex这把锁可以让多个worker进程轮流地、序列化地与新的客户端建立TCP连接.
+     * 当某一个worker进程建立的连接数量达到worker_connections配置的最大连接数的7/8时，
+     * 会大大地减小该worker进程试图建立新TCP连接的机会，以此实现所有worker进程之上处理的客户端请求数尽量接近.
+     * accept锁默认是打开的，如果关闭它，那么建立TCP连接的耗时会更短，但worker进程之间的负载会非常不均衡，因此不建议关闭它
+     */
     ngx_flag_t    accept_mutex;
 
     /*
@@ -560,9 +569,20 @@ typedef struct {
     u_char       *name;
 
 #if (NGX_DEBUG)
-    /*
-    在 --with-debug 编译模式下，可以仅针对某些客户端建立的连接输出调试级别的日志，而debug_connection数组用于保存这些客户端的地址信息
+    /**
+     * 在 --with-debug 编译模式下，可以仅针对某些客户端建立的连接输出调试级别的日志，而debug_connection数组用于保存这些客户端的地址信息
+     * 仅来自以上IP地址的请求才会输出debug日志，
+     * 使用debug_connection前，需确保在执行configure时已经加入了--with-debug参数，否则不会生效，
+     * 因为ngx_event_debug_connection 函数中，有效执行部分在NGX_DEBUG 宏的保护下。
     */
+    /**
+     * debug_connection数组
+     * 如配置
+     * events{
+     *  debug_connection 127.0.0.1
+     *  debug_conection 10.224.57.0
+     * }
+     */
     ngx_array_t   debug_connection;
 #endif
 } ngx_event_conf_t;

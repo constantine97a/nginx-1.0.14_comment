@@ -126,28 +126,77 @@ struct ngx_cycle_s {
 };
 //[p] 保存nginx运行所需的基本参数
 typedef struct {
-     ngx_flag_t               daemon;  //[p] 守护进程标志            
+     /**
+      * 语法：daemon on|off;
+      * 默认：daemon on;
+      * 守护进程（daemon）是脱离终端并且在后台运行的进程。它脱离终端是为了避免进程执行过程中的信息在任何终端上显示，
+      * 这样一来，进程也不会被任何终端所产生的信息所打断。
+      * Nginx毫无疑问是一个需要以守护进程方式运行的服务，因此，默认都是以这种方式运行的。
+      */
+     ngx_flag_t               daemon;  //[p] 守护进程标志
+     /**
+      * 语法：master_process on|off;
+      * 是以一个master进程管理多个worker进程的方式运行的，几乎所有的产品环境下，Nginx都以这种方式工作。
+      * master+worker process
+      * master进程监听信号,
+      * master<----- socketpair --> worker process
+      */
      ngx_flag_t               master;  //[p] master进程标志
 
      ngx_msec_t               timer_resolution;
-
+     /** 语法：worker_processes number;
+      * 默认：worker_processes 1;
+      * 在master/worker运行方式下，定义worker进程的个数。在MSP的架构下，work process应该 核数相同。
+      * 多worker进程可以充分利用多核系统架构，但若worker进程的数量多于CPU内核数，那么会增大进程间切换带来的消耗（Linux是抢占式内核）。
+      * 一般情况下，用户要配置与CPU内核数相等的worker进程，一般情况下使用worker_cpu_affinity配置来绑定CPU内核。
+      * 如果配置了ngx_set_cpu_affinity ，会在解析配置时候调用 ngx_set_cpu_affinity（受限于NGX_HAVE_SCHED_SETAFFINITY宏）
+      * 绑定CPU 内核。
+      * 如果有4颗CPU内核，就可以进行如下配置
+      * worker_processes  4;
+      * worker_cpu_affinity 1000 0100 0010 0001;
+      * worker_cpu_affinity配置仅对Linux操作系统有效。Linux操作系统使用sched_setaffinity()系统调用实现这个功能。
+      * 在启动worker process时候调用sched_setaffinity()进行CPU粘滞。
+      */
      ngx_int_t                worker_processes;    //[p] worker进程的数量
      ngx_int_t                debug_points;
 
      ngx_int_t                rlimit_nofile;
      ngx_int_t                rlimit_sigpending;
+
+     /**
+      * 在Linux系统中，当进程发生错误或收到信号而终止时，系统会将进程执行时的内存内容（核心映像）写入一个文件（core文件），
+      * 以作为调试之用，这就是所谓的核心转储（core dumps）。
+      * 当Nginx进程出现一些非法操作（如内存越界）导致进程直接被操作系统强制结束时，会生成核心转储core文件，
+      * 可以从core文件获取当时的堆栈、寄存器等信息，从而帮助我们定位问题。但这种core文件中的许多信息不一定是用户需要的，
+      * 如果不加以限制，那么可能一个core文件会达到几GB，这样随便coredumps几次就会把磁盘占满，
+      * 引发严重问题。通过worker_rlimit_core配置可以限制core文件的大小，从而有效帮助用户定位问题。
+      * 限制coredump核心转储文件的大小
+      */
      off_t                    rlimit_core;
 
      int                      priority;
 
      ngx_uint_t               cpu_affinity_n;
      u_long                  *cpu_affinity;
-
-     char                    *username;             
+    //Nginx worker进程运行的用户及用户组,默认是user nobody nobody;
+     char                    *username;
      ngx_uid_t                user;                 /* user ID */  
      ngx_gid_t                group;                /* group ID*/ 
 
+     /**
+      * 这个配置项的唯一用途就是设置coredump文件所放置的目录，协助定位问题。
+      * 因此，需确保worker进程有权限向working_directory指定的目录中写入文件
+      */
      ngx_str_t                working_directory;
+     /**
+      * ngx_event 模块中 ngx_event_conf_t 中的accept_mutex *（可能）*需要这个lock文件，如果accept锁关闭，lock_file配置完全不生效，
+      * 如果打开了accept锁，并且由于编译程序、操作系统架构等因素导致Nginx不支持原子锁，这时才会用文件锁实现accept锁。
+      * 否则应该是使用系统提供的跨进程的Mutex.
+      * 在基于i386、AMD64、Sparc64、PPC64体系架构的操作系统上，若使用GCC、Intel C++、SunPro
+      * C++编译器来编译Nginx，则可以肯定这时的Nginx是支持原子锁的，
+      * 因为Nginx会利用CPU的特性并用汇编语言来实现它（可以参考14.3节x86架构下原子操作的实现）。
+      * 这时的lock_file配置是没有意义的。
+      */
      ngx_str_t                lock_file;
 
      ngx_str_t                pid;

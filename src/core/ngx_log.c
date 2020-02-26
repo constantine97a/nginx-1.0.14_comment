@@ -423,7 +423,14 @@ ngx_log_set_levels(ngx_conf_t *cf, ngx_log_t *log)
 
     return NGX_CONF_OK;
 }
-// ngx_errlog_module指令解析函数
+
+/**
+ * ngx_errlog_module指令解析函数，对应error_log/path/file level;
+ * @param cf
+ * @param cmd
+ * @param conf
+ * @return
+ */
 static char *
 ngx_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
