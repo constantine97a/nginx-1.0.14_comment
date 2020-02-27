@@ -948,7 +948,11 @@ ngx_process_options(ngx_cycle_t *cycle)
     return NGX_OK;
 }
 
-
+/***
+ * 挂载在ngx_core_module_ctx上的create_conf的回调方法
+ * @param cycle
+ * @return
+ */
 static void *
 ngx_core_module_create_conf(ngx_cycle_t *cycle)  // 这是core模块对外的create_conf的钩子
 {

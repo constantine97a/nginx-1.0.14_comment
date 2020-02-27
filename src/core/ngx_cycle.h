@@ -37,12 +37,22 @@ struct ngx_shm_zone_s {
 /*
 注意理解cycle,cycle就是周期的意思，对应着一次启动过程。也就是说，不论是新的nginx、reload还是热替换，nginx都会创建一个新的cycle启动对应。
 */
+/***
+ * 服务在初始化时就以ngx_cycle_t对象为中心来提供服务，在正常运行时仍然会以ngx_cycle_t对象为中心.
+ * Nginx框架是围绕着ngx_cycle_t结构体来控制进程运行的.
+ * ngx_cycle_t结构体的prefix,conf_prefix,conf_file等字符串类型成员保存着Nginx配置文件的路径,
+ * Nginx的可配置性完全依赖于nginx.conf配置文件，
+ * Nginx所有模块的可定制性、可伸缩性等诸多特性也是依赖于nginx.conf配置文件的,可以想见,这个配置文件路径必然是保存在ngx_cycle_t结构体中的.
+ *
+ * 有了配置文件后，Nginx框架就开始根据配置项来加载所有的模块了.
+ * ngx_init_cycle用于初始化ngx_cycle_s结构体
+ *
+ */
 struct ngx_cycle_s {
     /*
      保存着所有模块存储配置项的结构体指针，
      它首先是一个数组，数组大小为ngx_max_module，正好与Nginx的module个数一样；
      每个数组成员又是一个指针，指向另一个存储着指针的数组，因此会看到void ****
-
     请见陶辉所著《深入理解Nginx-模块开发与架构解析》一书302页插图。
     另外，这个图也不错：http://img.my.csdn.net/uploads/201202/9/0_1328799724GTUk.gif
     */
@@ -78,6 +88,11 @@ struct ngx_cycle_s {
     ngx_queue_t               reusable_connections_queue;  
 
     // 动态数组，每个数组元素储存着ngx_listening_t成员，表示监听端口及相关的参数
+    /**
+     * 每个ngx_listening_t结构体又代表着Nginx服务器监听的一个端口
+     * listening监听端口的数组，详见ngx_listening_s的注释.
+     * master进程、worker进程等许多进程共同监听同一个TCP端口
+     */
     ngx_array_t               listening;        
 
     /*

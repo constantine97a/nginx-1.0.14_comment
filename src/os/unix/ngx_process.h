@@ -93,6 +93,9 @@ extern int            ngx_argc;
 extern char         **ngx_argv;
 extern char         **ngx_os_argv;
 
+/***
+ * 全局的ngx_pidb
+ */
 extern ngx_pid_t      ngx_pid;
 extern ngx_socket_t   ngx_channel;
 extern ngx_int_t      ngx_process_slot;

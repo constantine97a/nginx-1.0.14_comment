@@ -233,21 +233,45 @@ static ngx_command_t  ngx_http_core_commands[] = {
       0,
       0,
       NULL },
-
+/**
+ * 语法：connection_pool_size size;
+ * 默认：connection_pool_size 256;
+ * 配置块：http、server
+ *
+ * Nginx对于每个建立成功的TCP连接会预先分配一个内存池，上面的size配置项将指定这个内存池的初始大小
+ * （即ngx_connection_t结构体中的pool内存池初始大小），用于减少内核对于小块内存的分配次数。
+ * 需慎重设置，因为更大的size会使服务器消耗的内存增多，而更小的size则会引发更多的内存分配次数。
+ */
     { ngx_string("connection_pool_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_core_srv_conf_t, connection_pool_size),
       &ngx_http_core_pool_size_p },
-
+/***
+ * 语法：request_pool_size size;
+ * 默认：request_pool_size 4k;
+ * 配置块：http、server
+ *
+ * Nginx开始处理HTTP请求时，将会为每个请求都分配一个内存池，size配置项将指定这个内存池的初始大小（即ngx_http_request_t结构体中的pool内存池初始大小）
+ * 用于减少内核对于小块内存的分配次数.
+ * TCP连接关闭时会销毁connection_pool_size指定的连接内存池，HTTP请求结束时会销毁request_pool_size指定的HTTP请求内存池，但它们的创建、销毁时间并不一致，
+ * 因为一个TCP连接可能被复用于多个HTTP请求
+ */
     { ngx_string("request_pool_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_core_srv_conf_t, request_pool_size),
       &ngx_http_core_pool_size_p },
-
+/**
+ * 语法：client_header_timeout time（默认单位：秒）;
+ * 默认：client_header_timeout 60;
+ * 配置块：http、server、location
+ *
+ * 客户端与服务器建立连接后将开始接收HTTP头部，在这个过程中，如果在一个时间间隔（超时时间）内没有读取到客户端发来的字节，则认为超时，
+ * 并向客户端返回408("Request timed out")响应。
+ */
     { ngx_string("client_header_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -276,6 +300,14 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, server_name_in_redirect),
       &ngx_conf_deprecated_optimize_server_names },
 
+      /***
+       * 语法：ignore_invalid_headers on|off;
+       * 默认：ignore_invalid_headers on;
+       * 配置块：http、server
+       *
+       * 如果将其设置为off，那么当出现不合法的HTTP头部时，Nginx会拒绝服务，并直接向用户发送400（Bad Request）错误.
+       * 如果将其设置为on，则会忽略此HTTP头部。
+       */
     { ngx_string("ignore_invalid_headers"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -290,6 +322,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_srv_conf_t, merge_slashes),
       NULL },
 
+      /***
+       * 语法：underscores_in_headers on|off;
+       * 默认：underscores_in_headers off;
+       * 配置块：http、server
+       *
+       * 默认为off，表示HTTP头部的名称中不允许带“_”（下划线）。
+       */
     { ngx_string("underscores_in_headers"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -387,6 +426,15 @@ static ngx_command_t  ngx_http_core_commands[] = {
       0,
       NULL },
 
+      /**
+       * 语法：client_max_body_size size;
+       * 默认：client_max_body_size 1m;
+       * 配置块：http、server、location
+       *
+       * 浏览器在发送含有较大HTTP包体的请求时，其头部会有一个Content-Length字段，client_max_body_size是用来限制Content-Length所示值的大小的。
+       * 因此，这个限制包体的配置非常有用处，因为不用等Nginx接收完所有的HTTP包体——这有可能消耗很长时间——就可以告诉用户请求过大不被接受。
+       * 例如，用户试图上传一个10GB的文件，Nginx在收完包头后，发现Content-Length超过client_max_body_size定义的值，就直接发送413("Request Entity Too Large")响应给客户端。
+       */
     { ngx_string("client_max_body_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_off_slot,
@@ -401,6 +449,14 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, client_body_buffer_size),
       NULL },
 
+      /**
+       *
+       * 语法：client_body_timeout time（默认单位：秒）；
+       * 默认：client_body_timeout 60;
+       * 配置块：http、server、location
+       *
+       * 此配置项与client_header_timeout相似，只是这个超时时间只在读取HTTP包体时才有效。
+       */
     { ngx_string("client_body_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -415,6 +471,12 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, client_body_temp_path),
       NULL },
 
+      /**
+       * HTTP包体只存储到磁盘文件中
+       * 语法：client_body_in_file_only on|clean|off;
+       * 默认：client_body_in_file_only off;
+       * 配置块：http、server、location
+       */
     { ngx_string("client_body_in_file_only"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_enum_slot,
@@ -429,6 +491,15 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, client_body_in_single_buffer),
       NULL },
 
+      /***
+       * 语法：sendfile on|off;
+       * 默认：sendfile off;
+       * 配置块：http、server、location
+       *
+       * 可以启用Linux上的sendfile系统调用来发送文件，它减少了内核态与用户态之间的两次内存复制，
+       * 这样就会从磁盘中读取文件后直接在内核态发送到网卡设备，提高了发送文件的效率。
+       * 即零拷贝
+       */
     { ngx_string("sendfile"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
                         |NGX_CONF_FLAG,
@@ -445,7 +516,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NULL },
 
 #if (NGX_HAVE_FILE_AIO)
-
+    /**
+     * 语法：aio on|off;
+     * 默认：aio off;
+     * 配置块：http、server、location
+     *
+     * 此配置项表示是否在FreeBSD或Linux系统上启用内核级别的异步文件I/O功能。它与sendfile功能是互斥的。
+     */
     { ngx_string("aio"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_enum_slot,
@@ -462,6 +539,14 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, read_ahead),
       NULL },
 
+      /**
+       * 语法：directio size|off;
+       * 默认：directio off;
+       * 配置块：http、server、location
+       *
+       * 此配置项在FreeBSD和Linux系统上使用O_DIRECT选项去读取文件，缓冲区大小为size，通常对大文件的读取速度有优化作用.
+       * 它与sendfile功能是互斥的
+       */
     { ngx_string("directio"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_http_core_directio,
@@ -469,6 +554,14 @@ static ngx_command_t  ngx_http_core_commands[] = {
       0,
       NULL },
 
+      /***
+       * 语法：directio_alignment size;
+       * 默认：directio_alignment 512;
+       * 配置块：http、server、location
+       *
+       *它与directio配合使用，指定以directio方式读取文件时的对齐方式。
+       * 一般情况下，512B已经足够了，但针对一些高性能文件系统，如Linux下的XFS文件系统，可能需要设置到4KB作为对齐方式。
+       */
     { ngx_string("directio_alignment"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_off_slot,
@@ -490,6 +583,20 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, tcp_nodelay),
       NULL },
 
+      /**
+       * 语法：send_timeout time;
+       * 默认：send_timeout 60;
+       * 配置块：http、server、location
+       *
+       * 这个超时时间是发送响应的超时时间，即Nginx服务器向客户端发送了数据包，
+       * 但客户端一直没有去接收这个数据包。如果某个连接超过send_timeout定义的超时时间，那么Nginx将会关闭这个连接。
+       *
+       * 本版本没有“reset_timeout_connection” 配置
+       * 连接超时后将通过向客户端发送RST包来直接重置连接.
+       * 这个选项打开后，Nginx会在某个连接超时后，不是使用正常情形下的四次握手关闭TCP连接，而是直接向用户发送RST重置包，
+       * 不再等待用户的应答，直接释放Nginx服务器上关于这个套接字使用的所有缓存（如TCP滑动窗口）.
+       * 相比正常的关闭方式，它使得服务器避免产生许多处于FIN_WAIT_1、FIN_WAIT_2、TIME_WAIT状态的TCP连接
+       */
     { ngx_string("send_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -511,6 +618,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, postpone_output),
       NULL },
 
+      /***
+       * 语法：limit_rate speed;
+       * 默认：limit_rate 0;
+       * 配置块：http、server、location、if
+       *
+       * 此配置是对客户端请求限制每秒传输的字节数.speed可以使用多种单位，默认参数为0，表示不限速。
+       */
     { ngx_string("limit_rate"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
                         |NGX_CONF_TAKE1,
@@ -519,6 +633,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, limit_rate),
       NULL },
 
+      /**
+       * 语法：limit_rate_after time;
+       * 默认：limit_rate_after 1m;
+       * 配置块：http、server、location、if
+       *
+       * 此配置表示Nginx向客户端发送的响应长度超过limit_rate_after后才开始限速
+       */
     { ngx_string("limit_rate_after"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
                         |NGX_CONF_TAKE1,
@@ -569,13 +690,30 @@ static ngx_command_t  ngx_http_core_commands[] = {
       0,
       NULL },
 
+      /**
+       * 语法：lingering_close off|on|always;
+       * 默认：lingering_close on;
+       * 配置块：http、server、location
+       *
+       * 该配置控制Nginx关闭用户连接的方式。
+       * always表示关闭用户连接前必须无条件地处理连接上所有用户发送的数据。
+       * off表示关闭连接时完全不管连接上是否已经有准备就绪的来自用户的数据。
+       * on是中间值，一般情况下在关闭连接前都会处理连接上的用户发送的数据，除了有些情况下在业务上认定这之后的数据是不必要的。
+       */
     { ngx_string("lingering_close"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_enum_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_core_loc_conf_t, lingering_close),
       &ngx_http_core_lingering_close },
-
+/***
+ * 语法：lingering_time time;
+ * 默认：lingering_time 30s;
+ * 配置块：http、server、location
+ *
+ *
+ * lingering_close启用后，这个配置项对于上传大文件很有用。上文讲过，当用户请求的Content-Length大于max_client_body_size配置时，Nginx服务会立刻向用户发送413（Request entity too large）响应。但是，很多客户端可能不管413返回值，仍然持续不断地上传HTTP body，这时，经过了lingering_time设置的时间后，Nginx将不管用户是否仍在上传，都会把连接关闭掉
+ */
     { ngx_string("lingering_time"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -746,6 +884,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, open_file_cache_events),
       NULL },
 
+      /**
+       * 语法：resolver address...;
+       * 配置块：http、server、location
+       *
+       * 设置DNS名字解析服务器的地址
+       *
+       */
     { ngx_string("resolver"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_http_core_resolver,

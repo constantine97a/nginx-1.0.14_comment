@@ -261,6 +261,12 @@ ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
 
 static ngx_command_t  ngx_http_upstream_commands[] = {
 
+        /**
+         * 语法：upstream name{...}
+         * 配置块：http
+         *
+         * upstream块定义了一个上游服务器的集群，便于反向代理中的proxy_pass使用.
+         */
     { ngx_string("upstream"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_TAKE1,
       ngx_http_upstream,

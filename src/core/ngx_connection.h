@@ -15,8 +15,11 @@
 
 typedef struct ngx_listening_s  ngx_listening_t;
 
+/**
+ * nginx监听端口对象
+ */
 struct ngx_listening_s {
-    // socket套接字句柄
+    // socket套接字句柄FD
     ngx_socket_t        fd;
 
     // 监听socketaddr地址

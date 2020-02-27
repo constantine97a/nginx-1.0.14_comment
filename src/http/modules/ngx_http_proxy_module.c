@@ -175,6 +175,14 @@ ngx_module_t  ngx_http_proxy_module;
 
 static ngx_command_t  ngx_http_proxy_commands[] = {
 
+        /**
+         * proxy_pass
+         * 语法：proxy_pass
+         * URL;
+         * 配置块：location、if
+         *
+         * 将当前请求反向代理到URL参数指定的服务器上，URL可以是主机名或IP地址加端口的形式
+         */
     { ngx_string("proxy_pass"),
       NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_HTTP_LMT_CONF|NGX_CONF_TAKE1,
       ngx_http_proxy_pass,
@@ -2369,7 +2377,13 @@ ngx_http_proxy_merge_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
     return ngx_hash_init(&hash, headers_names.elts, headers_names.nelts);
 }
 
-
+/**
+ *
+ * @param cf
+ * @param cmd
+ * @param conf
+ * @return
+ */
 static char *
 ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
