@@ -60,7 +60,11 @@ static ngx_command_t  ngx_core_commands[] = {
       0,
       offsetof(ngx_core_conf_t, pid),
       NULL },
-
+    /**
+     * lock文件的路径语法：lock_file path/file;
+     * 默认：lock_file logs/nginx.lock;
+     * 详细见ngx_core_conf_t.lock_file的描述
+     */
     { ngx_string("lock_file"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,

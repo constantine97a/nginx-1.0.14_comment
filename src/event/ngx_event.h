@@ -546,10 +546,15 @@ typedef struct {
     // 选用的事件模块在所有事件模块中的序号
     ngx_uint_t    use;
 
-    // 标志位，如果为1，则表示在接收到一个新连接事件时，一次性建立尽可能多的连接
-    ngx_flag_t    multi_accept;
-    //标识位，为1表示启用负载均衡锁
     /**
+     * 标志位，如果为1，则表示在接收到一个新连接事件时，一次性建立尽可能多的连接
+     * 语法：multi_accept[on|off];
+     * 默认：multi_accept off;
+     * 当事件模型通知有新连接时，尽可能地对本次调度中客户端发起的所有TCP请求都建立连接。
+     */
+    ngx_flag_t    multi_accept;
+    /**
+     * 标识位，为1表示启用负载均衡锁
      * 是否打开accept锁
      * 语法：accept_mutex[on|off]
      * 默认：accept_mutext on;
@@ -563,6 +568,14 @@ typedef struct {
     /*
     负载均衡锁会使有些worker进程在拿不到锁时延迟建立新连接，accept_mutex_delay就是这段延迟时间的长度
     */
+    /**
+     * 语法：accept_mutex_delay Nms;
+     * 默认：accept_mutex_delay 500ms;
+     * 在使用accept锁后，同一时间只有一个worker进程能够取到accept锁。
+     * 这个accept锁不是阻塞锁，如果取不到会立刻返回。
+     * 如果有一个worker进程试图取accept锁而没有取到，
+     * 它至少要等accept_mutex_delay定义的时间间隔后才能再次试图取锁.
+     */
     ngx_msec_t    accept_mutex_delay;
 
     // 所选用事件模块的名字，它与use成员是匹配的

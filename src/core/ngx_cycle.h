@@ -189,7 +189,9 @@ typedef struct {
       */
      ngx_str_t                working_directory;
      /**
-      * ngx_event 模块中 ngx_event_conf_t 中的accept_mutex *（可能）*需要这个lock文件，如果accept锁关闭，lock_file配置完全不生效，
+      * lock文件的路径语法：lock_file path/file;默认：lock_file logs/nginx.lock;
+      * ngx_event 模块中 ngx_event_conf_t 中的accept_mutex *（可能）*需要这个lock文件，
+      * 如果accept锁关闭，lock_file配置完全不生效，
       * 如果打开了accept锁，并且由于编译程序、操作系统架构等因素导致Nginx不支持原子锁，这时才会用文件锁实现accept锁。
       * 否则应该是使用系统提供的跨进程的Mutex.
       * 在基于i386、AMD64、Sparc64、PPC64体系架构的操作系统上，若使用GCC、Intel C++、SunPro

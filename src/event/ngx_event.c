@@ -117,7 +117,11 @@ static ngx_str_t  event_core_name = ngx_string("event_core");
 
 
 static ngx_command_t  ngx_event_core_commands[] = {
-
+    /**
+     * 每个worker的最大连接数
+     * 语法：worker_connections number;
+     * 定义每个worker进程可以同时处理的最大连接数。
+     */
     { ngx_string("worker_connections"),
       NGX_EVENT_CONF|NGX_CONF_TAKE1,
       ngx_event_connections,
@@ -131,28 +135,45 @@ static ngx_command_t  ngx_event_core_commands[] = {
       0,
       0,
       NULL },
-
+    /**
+     * 选择事件模型
+     */
     { ngx_string("use"),
       NGX_EVENT_CONF|NGX_CONF_TAKE1,
       ngx_event_use,
       0,
       0,
       NULL },
-
+    /**
+     * 批量建立新连接
+     * 语法：multi_accept[on|off];
+     * 默认：multi_accept off;
+     * 当事件模型通知有新连接时，尽可能地对本次调度中客户端发起的所有TCP请求都建立连接。
+     * 详细见ngx_event_conf_t.multi_accept的配置
+     */
     { ngx_string("multi_accept"),
       NGX_EVENT_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       0,
       offsetof(ngx_event_conf_t, multi_accept),
       NULL },
-
+    /**
+     * 是否打开accept锁
+     * 语法：accept_mutex[on|off]
+     * 默认：accept_mutext on;
+     * 具体描述见ngx_event_conf_t.accept_mutex中的描述
+     */
     { ngx_string("accept_mutex"),
       NGX_EVENT_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       0,
       offsetof(ngx_event_conf_t, accept_mutex),
       NULL },
-
+    /**
+     * 使用accept锁后到真正建立连接之间的延迟时间
+     * 语法：accept_mutex_delay Nms;默认：accept_mutex_delay 500ms;
+     * 具体详见ngx_event_conf_t.accept_mutex_delay描述
+     */
     { ngx_string("accept_mutex_delay"),
       NGX_EVENT_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -982,6 +1003,15 @@ ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+/**
+ * 每个worker的最大连接数
+ * 语法：worker_connections number;
+ * 定义每个worker进程可以同时处理的最大连接数。
+ * @param cf 配置指令信息
+ * @param cmd 指令
+ * @param conf 指向ngx_event_conf_t的ptr
+ * @return {NGX_CONF_ERROR|NGX_CONF_OK|"is duplicate"}
+ */
 static char *
 ngx_event_connections(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -1013,7 +1043,17 @@ ngx_event_connections(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
-
+/**
+ * 选择事件模型
+ * 语法：use[kqueue|rtsig|epoll|/dev/poll|select|poll|eventport];
+ * 默认：Nginx会自动使用最适合的事件模型。
+ * 在Event节配置事件模型
+ * 对于Linux操作系统来说，供选择的事件驱动模型有poll、select、epoll三种。epoll当然是性能最高的一种，在9.6节会解释epoll为什么可以处理大并发连接。
+ * @param cf
+ * @param cmd
+ * @param conf
+ * @return
+ */
 static char *
 ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {

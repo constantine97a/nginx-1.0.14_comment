@@ -209,14 +209,24 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NGX_HTTP_MAIN_CONF_OFFSET,
       offsetof(ngx_http_core_main_conf_t, server_names_hash_max_size),
       NULL },
-
+    /**
+     * server_names_hash_bucket_size
+     * 语法：server_names_hash_bucket_size size;
+     * 默认：server_names_hash_bucket_size 32|64|128;
+     * 配置块：http、server、location
+     * 为了提高快速寻找到相应server name的能力，Nginx使用散列表来存储servername
+     * server_names_hash_bucket_size设置了每个散列桶占用的内存大小。
+     */
     { ngx_string("server_names_hash_bucket_size"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_num_slot,
       NGX_HTTP_MAIN_CONF_OFFSET,
       offsetof(ngx_http_core_main_conf_t, server_names_hash_bucket_size),
       NULL },
-
+    /**
+     * server节点的指令处理
+     *
+     */
     { ngx_string("server"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_MULTI|NGX_CONF_NOARGS,
       ngx_http_core_server,
@@ -293,14 +303,32 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NGX_HTTP_SRV_CONF_OFFSET,
       0,
       NULL },
-
+    /**
+     * 监听端口;
+     * 语法：listen address:port[default(deprecated in 0.8.21)|default_server|[backlog=num|rcvbuf=size|sndbuf=size|accept_filter=filter|deferred|bind|ipv6only=[on|off]|ssl]];
+     * 默认：listen 80;
+     * 配置块：server;
+     * listen参数决定Nginx服务如何监听端口。在listen后可以只加IP地址、端口或主机名，非常灵活，
+     *
+     *
+     */
     { ngx_string("listen"),
       NGX_HTTP_SRV_CONF|NGX_CONF_1MORE,
       ngx_http_core_listen,
       NGX_HTTP_SRV_CONF_OFFSET,
       0,
       NULL },
-
+/**
+ * 主机名称
+ * 语法：server_name name[...];
+ * 默认：server_name "";
+ * 配置块：server
+ *
+ * server_name后可以跟多个主机名称，如server_name www.testweb.com、download.testweb.com;
+ * 在开始处理一个HTTP请求时，Nginx会取出header头中的Host，与每个server中的server_name进行匹配，
+ * 以此决定到底由哪一个server块来处理这个请求。 有可能一个Host与多个server块中的server_name都匹配，
+ * 这时就会根据匹配优先级来选择实际处理的server块。server_name与Host的匹配优先级如
+ */
     { ngx_string("server_name"),
       NGX_HTTP_SRV_CONF|NGX_CONF_1MORE,
       ngx_http_core_server_name,
@@ -2645,7 +2673,10 @@ ngx_http_cleanup_add(ngx_http_request_t *r, size_t size)
     return cln;
 }
 
-
+/**
+ * server节点的指令处理Handler
+ *
+ */
 static char *
 ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 {
@@ -3657,7 +3688,27 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     return NGX_CONF_OK;
 }
 
-
+/***
+ * 语法：listen address:port[default(deprecated in 0.8.21)|default_server|[backlog=num|rcvbuf=size|sndbuf=size|accept_filter=filter|deferred|bind|ipv6only=[on|off]|ssl]];
+ * 默认：listen 80;配置块：serverlisten参数决定Nginx服务如何监听端口
+ * 在listen后可以只加IP地址、端口或主机名.
+ *
+ * default：将所在的server块作为整个Web服务的默认server块。如果没有设置这个参数，
+ * 那么将会以在nginx.conf中找到的第一个server块作为默认server块。
+ *
+ * backlog=num：表示TCP中backlog队列的大小。默认为–1，表示不予设置
+ * rcvbuf=size：设置监听句柄的SO_RCVBUF参数。
+ * sndbuf=size：设置监听句柄的SO_SNDBUF参数。
+ * accept_filter：设置accept过滤器，只对FreeBSD操作系统有用。
+ * deferred：在设置该参数后，若用户发起建立连接请求，并且完成了TCP的三次握手，内核也不会为了这次的连接调度worker进程来处理，
+ *  只有用户真的发送请求数据时（内核已经在网卡中收到请求数据包），内核才会唤醒worker进程处理这个连接.
+ * bind：绑定当前端口/地址对.
+ * ssl：在当前监听的端口上建立的连接必须基于SSL协议.
+ * @param cf
+ * @param cmd
+ * @param conf
+ * @return
+ */
 static char *
 ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {

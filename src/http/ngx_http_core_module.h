@@ -197,8 +197,21 @@ typedef struct {
 
     ngx_array_t                variables;       /* ngx_http_variable_t */
     ngx_uint_t                 ncaptures;
-
+    /**
+     * 控制server name 散列桶总数
+     * 语法：server_names_hash_max_size size;默认：server_names_hash_max_size 512;配置块：http、server、location
+     * server_names_hash_max_size会影响散列表的冲突率。
+     * server_names_hash_max_size越大，消耗的内存就越多，但散列key的冲突率则会降低，检索速度也更快
+     * 。server_names_hash_max_size越小，消耗的内存就越小，但散列key的冲突率可能增高。
+     */
     ngx_uint_t                 server_names_hash_max_size;
+    /**
+     * 语法：server_names_hash_bucket_size size;
+     * 默认：server_names_hash_bucket_size 32|64|128;
+     * 配置块：http、server、location
+     * 为了提高快速寻找到相应server name的能力，Nginx使用散列表来存储servername
+     * server_names_hash_bucket_size设置了每个散列桶占用的内存大小
+     */
     ngx_uint_t                 server_names_hash_bucket_size;
 
     ngx_uint_t                 variables_hash_max_size;
