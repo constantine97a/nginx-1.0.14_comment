@@ -176,6 +176,9 @@ typedef struct {
      ngx_int_t                debug_points;
 
      ngx_int_t                rlimit_nofile;
+     /***
+      * linux平台的事件信号队列长度上线
+      */
      ngx_int_t                rlimit_sigpending;
 
      /**

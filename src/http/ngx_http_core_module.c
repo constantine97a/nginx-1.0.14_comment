@@ -389,6 +389,17 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, types_hash_bucket_size),
       NULL },
 
+        /***
+         * Syntax:	types { ... }
+         * Default:
+         * types {
+         *     text/html  html;
+         *     image/gif  gif;
+         *     image/jpeg jpg;
+         * }
+         * Context:	http, server, location
+         * Maps file name extensions to MIME types of responses. Extensions are case-insensitive. Several extensions can be mapped to one type,
+         */
     { ngx_string("types"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF
                                           |NGX_CONF_BLOCK|NGX_CONF_NOARGS,
@@ -3188,16 +3199,29 @@ ngx_http_core_types(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     char        *rv;
     ngx_conf_t   save;
-
+    /**
+     * 为ngx_http_core_loc_conf_t 初始化types数组信息
+     */
     if (clcf->types == NULL) {
         clcf->types = ngx_array_create(cf->pool, 64, sizeof(ngx_hash_key_t));
         if (clcf->types == NULL) {
             return NGX_CONF_ERROR;
         }
     }
-
+    /**
+     * 将当前的cf实际内容保存在Save 中
+     * 注明:在C++和C中，所有的赋值语句可以认为是内存的拷贝
+     * 以下 *cf是解引用后将ngx_conf_s的内存拷贝给save的结构体
+     * 而在Java或是其的语言中，所有的变量都可以算是引用，因此是地址的的拷贝
+     */
     save = *cf;
+    /**
+     * 保存当前handler
+     */
     cf->handler = ngx_http_core_type;
+    /**
+     * 当前的conf
+     */
     cf->handler_conf = conf;
 
     rv = ngx_conf_parse(cf, NULL);

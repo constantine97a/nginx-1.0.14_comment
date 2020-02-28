@@ -331,7 +331,8 @@ ngx_init_signals(ngx_log_t *log)
     return NGX_OK;
 }
 
-//就目前nginx代码来看，子进程并没有往父进程发送任何消息，子进程之间也没有相互通信的逻辑，也许是因为nginx有其它一些更好的进程通信方式，比如共享内存等，所以这种channel通信目前仅做为父进程往子进程发送消息使用，但由于有这个基础在这，如果未来要使用channel做这样的事情，的确是可以的。
+//就目前nginx代码来看，子进程并没有往父进程发送任何消息，子进程之间也没有相互通信的逻辑，也许是因为nginx有其它一些更好的进程通信方式，
+// 比如共享内存等，所以这种channel通信目前仅做为父进程往子进程发送消息使用，但由于有这个基础在这，如果未来要使用channel做这样的事情，的确是可以的。
 
 //在nginx中，worker和master的交互，是通过流管道以及信号。
 //而master与外部的交互是通过信号来进行的,这个函数就是master处理信号的程序。
@@ -461,17 +462,26 @@ ngx_signal_handler(int signo)
             }
             ngx_debug_quit = 1;
         case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
+            /**
+             * 优雅的关闭,在ngx_worker_process_cycle检测使用
+             */
             ngx_quit = 1;
             action = ", shutting down";
             break;
 
         case ngx_signal_value(NGX_TERMINATE_SIGNAL):
         case SIGINT:
+            /**
+             * 强制关闭,在ngx_worker_process_cycle检测使用
+             */
             ngx_terminate = 1;
             action = ", exiting";
             break;
 
         case ngx_signal_value(NGX_REOPEN_SIGNAL):
+            /**
+             * 重新打开所有文件，在ngx_worker_process_cycle检测使用
+             */
             ngx_reopen = 1;
             action = ", reopening logs";
             break;

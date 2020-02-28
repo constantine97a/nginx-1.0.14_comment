@@ -85,7 +85,16 @@ ngx_create_listening(ngx_conf_t *cf, void *sockaddr, socklen_t socklen)
     return ls;
 }
 
-
+/**
+ * Nginx在不重启服务升级时，也就是我们说过的平滑升级（参见1.9节）时，它会不重启master进程而启动新版本的Nginx程序。
+ * 这样，旧版本的master进程会通过execve系统调用来启动新版本的master进程（先fork出子进程再调用exec来运行新程序），
+ * 这时旧版本的master进程必须要通过一种方式告诉新版本的master进程这是在平滑升级，并且传递一些必要的信息。
+ * Nginx是通过环境变量来传递这些信息的，
+ * 新版本的master进程通过ngx_add_inherited_sockets方法由环境变量里读取平滑升级信息，
+ * 并对旧版本Nginx服务监听的句柄做继承处理。
+ * @param cycle
+ * @return
+ */
 ngx_int_t
 ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 {
@@ -264,7 +273,11 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
     return NGX_OK;
 }
 
-
+/**
+ * 监听，绑定cycle中listening数组中的指定的端口信息
+ * @param cycle 当前进程的ngx_cycle_t结构
+ * @return status NGX_ERROR for error
+ */
 ngx_int_t
 ngx_open_listening_sockets(ngx_cycle_t *cycle)
 {
@@ -295,7 +308,7 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
             if (ls[i].ignore) {
                 continue;
             }
-
+            //如果ngx_listening_t 的FD不为-1，表示FD已经存在
             if (ls[i].fd != -1) {
                 continue;
             }
@@ -459,7 +472,16 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
     return NGX_OK;
 }
 
-
+/**
+ * 根据nginx.conf中配置的项设置已经监听的句柄
+ * 包括
+ * 1.TCP_DEFER_ACCEPT
+ * 2.SO_ACCEPTFILTER
+ * 3.rcvbuf
+ * 4.sndbuf
+ * 5.backlog
+ * @param cycle
+ */
 void
 ngx_configure_listening_sockets(ngx_cycle_t *cycle)
 {
@@ -627,7 +649,10 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
     return;
 }
 
-
+/**
+ * 关闭cycye_t中指定的listening数组打开的句柄
+ * @param cycle
+ */
 void
 ngx_close_listening_sockets(ngx_cycle_t *cycle)
 {
@@ -644,9 +669,13 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
 
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
-
+        // ngx_connection_t
         c = ls[i].connection;
-
+        /**
+         *  以下的ngx_del_conn等属于事件方法
+         *  它将负责把1个感兴趣的事件添加到操作系统提供的事件驱动机制（如epoll，kqueue等）中，
+         *  在事件发生之后，将可以在调用下面的process_envets时获取这个事件。
+         */
         if (c) {
             if (c->read->active) {
                 if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
@@ -668,7 +697,7 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
             }
 
             ngx_free_connection(c);
-
+            //
             c->fd = (ngx_socket_t) -1;
         }
 

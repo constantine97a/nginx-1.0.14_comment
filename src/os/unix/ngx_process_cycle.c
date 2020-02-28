@@ -86,6 +86,16 @@ static ngx_open_file_t  ngx_exit_log_file;
 4.启动缓存索引重建进程和管理进程
 5.主进程循环处理信号
 */
+/**
+ * 进入master进程的工作循环中
+ *1.主进程设置信号阻塞
+ * 2.设置进程标题
+ * 3.启动worker进程
+ * 4.启动缓存索引重建进程和管理进程
+ * 5.主进程循环处理信号
+ * 1,2,3,4工作都是进入之后执行一次的活动
+ * @param cycle
+ */
 void
 ngx_master_process_cycle(ngx_cycle_t *cycle)
 {
@@ -399,7 +409,9 @@ ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n, ngx_int_t type)
 
     //创建n个worker进程
     for (i = 0; i < n; i++) {
-
+        /**
+         * 设置进程的cup_affinity
+         */
         cpu_affinity = ngx_get_cpu_affinity(i);
         
         //fork新进程的具体工作，ngx_worker_process_cycle函数是工作进程要执行的具体工作
@@ -418,6 +430,11 @@ ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n, ngx_int_t type)
 }
 
 /*启动缓存索引重建及管理进程*/
+/**
+ * 根据是否使用文件缓存模块，判断
+ * @param cycle
+ * @param respawn
+ */
 static void
 ngx_start_cache_manager_processes(ngx_cycle_t *cycle, ngx_uint_t respawn)
 {
@@ -766,6 +783,12 @@ ngx_master_process_exit(ngx_cycle_t *cycle)
 }
 
 /* 工作进程要执行的具体工作*/
+/***
+ * work process的执行循环
+ * 在ngx_worker_process_cycle方法中，通过检查ngx_exiting、ngx_terminate、ngx_quit、ngx_reopen这4个标志位来决定后续动作
+ * @param cycle
+ * @param data
+ */
 static void
 ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
@@ -904,16 +927,24 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_uint_t priority)
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
     if (priority && ccf->priority != 0) {
+        /**
+         * 调用系统函数设置Process优先级
+         */
         if (setpriority(PRIO_PROCESS, 0, ccf->priority) == -1) { // 设置工作进程优先级
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno, //出错处理
                           "setpriority(%d) failed", ccf->priority);
         }
     }
-
+    /**
+     * 如果rlimit_nofile有设置
+     * set rlim_cur & set rlim_max
+     */
     if (ccf->rlimit_nofile != NGX_CONF_UNSET) {
         rlmt.rlim_cur = (rlim_t) ccf->rlimit_nofile;       // 获取配置信息
         rlmt.rlim_max = (rlim_t) ccf->rlimit_nofile;
-
+        /**
+         * 调用系统函数，设置进程能打开文件的系统数量上线
+         */
         if (setrlimit(RLIMIT_NOFILE, &rlmt) == -1) {		//设置打开文件描述符的上限
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "setrlimit(RLIMIT_NOFILE, %i) failed",

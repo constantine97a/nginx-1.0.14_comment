@@ -60,6 +60,11 @@ static ngx_uint_t argument_number[] = {
 };
 
 /*解析nginx配置参数*/
+/**
+ * 解析使用 -g 的参数配置
+ * @param cf
+ * @return
+ */
 char *
 ngx_conf_param(ngx_conf_t *cf)
 {
@@ -89,6 +94,7 @@ ngx_conf_param(ngx_conf_t *cf)
     conf_file.line = 0;
 
     cf->conf_file = &conf_file;
+    //将buffer设置为Param的buffer
     cf->conf_file->buffer = &b;
 	//执行具体的配置文件解析工作
     rv = ngx_conf_parse(cf, NULL);
@@ -121,7 +127,9 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
     fd = NGX_INVALID_FILE;
     prev = NULL;
 #endif
-
+    /**
+     * 解析配置文件
+     */
     if (filename) {
 
         /* open configuration file */
@@ -165,10 +173,15 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
         type = parse_file;
 
     } else if (cf->conf_file->file.fd != NGX_INVALID_FILE) {
-
+        /**
+         * 解析配置文件中的配置块
+         */
         type = parse_block;
 
     } else {
+        /**
+         * 单纯解析-g携带的参数
+         */
         type = parse_param;
     }
 

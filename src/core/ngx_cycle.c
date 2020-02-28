@@ -39,6 +39,20 @@ static ngx_connection_t  dumb;
 static ngx_str_t  error_log = ngx_string(NGX_ERROR_LOG_PATH);
 
 //初始化cycle
+/**
+ * 初始化cycle
+ * old_cycle表示零食的ngx_cycle_t指针，一般仅用来传递ngx_cycle_t结构体重的配置文件路径等参数
+ * 执行成功后会返回完整的ngx_cycle_t结构体
+ * 本函数负责
+ * 1 初始化ngx_cycle_t中的数据结构
+ * 2 解析配置文件
+ * 3 加载所有模块
+ * 4 打开监听端口
+ * 5 初始化进程间通讯socketpair
+ * 失败返回NULL
+ * @param old_cycle
+ * @return
+ */
 ngx_cycle_t *
 ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
@@ -58,6 +72,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     ngx_core_module_t   *module;
     char                 hostname[NGX_MAXHOSTNAMELEN];
 
+    //从系统中更新timezone信息
     ngx_timezone_update();
 
     /* force localtime update with a new timezone */
@@ -252,6 +267,9 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     senv = environ;
 
     //对指令结构进行初始化:参数，内存池
+    /**
+     *  ngx_conf_t可以认为是对应于配置文件中的每一行，里面有名字，参数
+     */
     ngx_memzero(&conf, sizeof(ngx_conf_t));
     /* STUB: init array ? */
     conf.args = ngx_array_create(pool, 10, sizeof(ngx_str_t));

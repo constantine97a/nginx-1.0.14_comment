@@ -120,7 +120,10 @@ static ngx_command_t  ngx_core_commands[] = {
       0,
       offsetof(ngx_core_conf_t, rlimit_core),
       NULL },
-
+    /**
+     * linux平台的事件信号队列长度上线
+     * 超过这个值，会自动交给poll模型处理未处理客户端请求
+     */
     { ngx_string("worker_rlimit_sigpending"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_num_slot,
@@ -436,6 +439,12 @@ main(int argc, char *const *argv)
 }
 
 /*继承socket*/
+/***
+ *在执行不重启NG升级的操作是，老的NG进程会通过环境变量将SOCKET的FD向新NG进程传递，
+ * 新的NG进程会通过ngx_add_inherited_sockets方法来使用已经打开的TCP监听端口
+ * @param cycle 是当前进程的ngx_cycle_t
+ * @return
+ */
 static ngx_int_t
 ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 {
@@ -853,6 +862,11 @@ ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv)
 }
 
 /*将nginx服务器启动时的参数保存到init_cycle结构的相应成员中*/
+/**
+ *
+ * @param cycle 是启动是刚分配的ngx_cycle,内部大部分没有被填充初始化，仅用于传递配置文件路径信息
+ * @return
+ */
 static ngx_int_t
 ngx_process_options(ngx_cycle_t *cycle)
 {

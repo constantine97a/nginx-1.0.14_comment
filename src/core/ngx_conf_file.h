@@ -20,6 +20,9 @@
  */
 
 #define NGX_CONF_NOARGS      0x00000001
+/**
+ *  需要一个参数，以下各个宏定义类推
+ */
 #define NGX_CONF_TAKE1       0x00000002
 #define NGX_CONF_TAKE2       0x00000004
 #define NGX_CONF_TAKE3       0x00000008
@@ -148,9 +151,6 @@ struct ngx_open_file_s {
 #define NGX_MODULE_V1_PADDING  0, 0, 0, 0, 0, 0, 0, 0   //该宏用来初始化最后8个字段
 
 //ngx_module_s是模块的定义
-/**
- *
- */
 struct ngx_module_s {
     //对于一类模块（由下面的type成员决定类别）而言，ctx_index标示当前模块在这类模块中的序号。
     //这个成员常常是由管理这类模块的一个nginx核心模块设置的，对于所有的HTTP模块而言，ctx_index
