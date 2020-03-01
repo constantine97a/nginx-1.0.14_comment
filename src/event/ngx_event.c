@@ -89,14 +89,26 @@ static ngx_command_t  ngx_events_commands[] = {
       ngx_null_command
 };
 
-
+/**
+ * 因为ngx_events_module模块并不会解析配置项的参数，只是在出现events配置项后会调用各事件模块去解析events{...}块内的配置项，
+ * 自然就不需要实现create_conf方法来创建存储配置项参数的结构体，也不需要实现init_conf方法处理解析出的配置项。
+ */
 static ngx_core_module_t  ngx_events_module_ctx = {
     ngx_string("events"),
     NULL,
     NULL
 };
 
-
+/**
+ * 核心模块
+ * 定义新的事件类型，并定义每个事件模块都需要实现的ngx_event_module_t接口，
+ * 作为核心模块，ngx_events_module还需要实现核心模块的共同接口ngx_core_module_t，
+ * 所以在ngx_events_module 有指向ngx_core_module_t的ngx_events_module_ctx 的指针。
+ *
+ * 然后我们看到以下所有的字段init_*方法都是空字段，
+ * 所以除了ngx_events_module对events配置项的解析外，该模块没有做其他任何事情。
+ *
+ */
 ngx_module_t  ngx_events_module = {
     NGX_MODULE_V1,
     &ngx_events_module_ctx,                /* module context */
@@ -136,7 +148,7 @@ static ngx_command_t  ngx_event_core_commands[] = {
       0,
       NULL },
     /**
-     * 选择事件模型
+     * 选择事件模型,确定选择哪一个事件模块作为事件驱动机制
      */
     { ngx_string("use"),
       NGX_EVENT_CONF|NGX_CONF_TAKE1,
@@ -158,7 +170,7 @@ static ngx_command_t  ngx_event_core_commands[] = {
       offsetof(ngx_event_conf_t, multi_accept),
       NULL },
     /**
-     * 是否打开accept锁
+     * 确定是否使用accept_mutex负载均衡，默认为开启
      * 语法：accept_mutex[on|off]
      * 默认：accept_mutext on;
      * 具体描述见ngx_event_conf_t.accept_mutex中的描述
@@ -191,22 +203,45 @@ static ngx_command_t  ngx_event_core_commands[] = {
       ngx_null_command
 };
 
-
+/**
+ * 除了上面的ngx_event_module外，每一个事件模块都必须实现ngx_event_module_t接口
+ * （也就是包含指向ngx_event_module_t类型的ctx指针）
+ * 因为ngx_event_core_module不会真正负责TCP网络事件的驱动，所以不用实现ngx_event_actions_t
+ */
 ngx_event_module_t  ngx_event_core_module_ctx = {
     &event_core_name,
+    /**
+     * create ngx_event_conf_t.
+     */
     ngx_event_create_conf,                 /* create configuration */
     ngx_event_init_conf,                   /* init configuration */
 
     { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL }
 };
 
-
+/**
+ * ngx_event_core_module决定使用哪种事件驱动机制，以及如何管理事件
+ *
+ * ngx_event_core_module模块是一个事件类型的模块，
+ * 它在所有事件模块中的顺序是第一位（configure执行时必须把它放在其他事件模块之前）。
+ * 这就保证了它会先于其他事件模块执行，由此它选择事件驱动机制的任务才可以完成。
+ *
+ * 它会创建连接池（包括读/写事件），同时会决定究竟使用哪些事件驱动机制，以及初始化将要使用的事件模块.
+ *
+ * 模块定义了ngx_event_core_commands数组处理其感兴趣的7个配置。
+ */
 ngx_module_t  ngx_event_core_module = {
     NGX_MODULE_V1,
     &ngx_event_core_module_ctx,            /* module context */
     ngx_event_core_commands,               /* module directives */
     NGX_EVENT_MODULE,                      /* module type */
     NULL,                                  /* init master */
+    /**
+     * 在Nginx启动过程中还没有fork出worker子进程时，
+     * 会首先调用ngx_event_core_module模块的ngx_event_module_init方法，
+     * 而在fork出worker子进程后，每一个worker进程会在调用ngx_event_core_module模块的
+     * ngx_event_process_init方法后才会进入正式的工作循环.
+     */
     ngx_event_module_init,                 /* init module */
     ngx_event_process_init,                /* init process */
     NULL,                                  /* init thread */
@@ -296,7 +331,15 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
     }
 }
 
-
+/**
+ * ngx_handle_read_event方法会将读事件添加到事件驱动模块中，这样该事件对应的TCP连接上一旦出现可读事件
+ * （如接收到TCP连接另一端发送来的字符流）就会回调该事件的handler方法(注，每个ngx_event_t结构都有对应的handler)
+ *
+ * 提供ngx_handle_write_event 主要屏蔽底层事件模型的不同
+ * @param rev
+ * @param flags event驱动方式
+ * @return
+ */
 ngx_int_t
 ngx_handle_read_event(ngx_event_t *rev, ngx_uint_t flags)
 {
@@ -364,7 +407,17 @@ ngx_handle_read_event(ngx_event_t *rev, ngx_uint_t flags)
     return NGX_OK;
 }
 
-
+/**
+ * ngx_handle_write_event方法会将写事件添加到事件驱动模块中。wev是要操作的事件，
+ * 而lowat则表示只有当连接对应的套接字缓冲区中必须有lowat大小的可用空间时，
+ * 事件收集器（如select或者epoll_wait调用）才能处理这个可写事件
+ * （lowat参数为0时表示不考虑可写缓冲区的大小）。
+ * 该方法返回NGX_OK表示成功，返回NGX_ERROR表示失败
+ * 提供ngx_handle_write_event 主要屏蔽底层事件模型的不同
+ * @param wev
+ * @param lowat
+ * @return
+ */
 ngx_int_t
 ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
 {
@@ -443,7 +496,11 @@ ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
     return NGX_OK;
 }
 
-
+/**
+ * 初始化ngx_event_core_module
+ * @param cycle
+ * @return
+ */
 static ngx_int_t
 ngx_event_module_init(ngx_cycle_t *cycle)
 {
@@ -639,7 +696,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         if (ngx_modules[m]->ctx_index != ecf->use) {
             continue;
         }
-
+        //拿到event_module的ngx_event_module_t 实现
         module = ngx_modules[m]->ctx;
         
         //初始化模块
@@ -677,7 +734,10 @@ ngx_event_process_init(ngx_cycle_t *cycle)
                           "setitimer() failed");
         }
     }
-
+    /**
+     * 如果使用了epoll事件驱动模式，那么会为ngx_cycle_t结构体中的files成员预分配句柄。
+     *
+     */
     if (ngx_event_flags & NGX_USE_FD_EVENT) {
         struct rlimit  rlmt;
 
@@ -916,7 +976,14 @@ ngx_send_lowat(ngx_connection_t *c, size_t lowat)
     return NGX_OK;
 }
 
-
+/**
+ * 作为解析events配置指令的command handler,本函数也是进行解析其他event module的引导
+ * 本函数会创建所有event module的ctx指针
+ * @param cf
+ * @param cmd
+ * @param conf
+ * @return
+ */
 static char *
 ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -929,6 +996,9 @@ ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     /* count the number of the event modules and set up their indices */
 
     ngx_event_max_module = 0;
+    /**
+     * 初始化event module的ctx_index
+     */
     for (i = 0; ngx_modules[i]; i++) {
         if (ngx_modules[i]->type != NGX_EVENT_MODULE) {
             continue;
@@ -937,7 +1007,9 @@ ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_modules[i]->ctx_index = ngx_event_max_module++;
     }
 
-
+    /**
+     * 分配数组指针
+     */
     ctx = ngx_pcalloc(cf->pool, sizeof(void *));
     if (ctx == NULL) {
         return NGX_CONF_ERROR;
@@ -1182,7 +1254,11 @@ ngx_event_debug_connection(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
-
+/**
+ * 创建ngx_event_conf_t类型的conf
+ * @param cycle
+ * @return
+ */
 static void *
 ngx_event_create_conf(ngx_cycle_t *cycle)
 {

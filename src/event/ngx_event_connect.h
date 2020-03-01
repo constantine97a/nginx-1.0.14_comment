@@ -21,8 +21,14 @@
 
 typedef struct ngx_peer_connection_s  ngx_peer_connection_t;
 
+/**
+ * 定义的方法指针，当时用长连接与上游服务器通讯是，可以使用该函数从连接池中获取一个新连接
+ */
 typedef ngx_int_t (*ngx_event_get_peer_pt)(ngx_peer_connection_t *pc,
     void *data);
+/**
+ * 当使用长连接和上游服务器通讯完成后，通过ngx_event_free_peer_pt将连接释放回连接池
+ */
 typedef void (*ngx_event_free_peer_pt)(ngx_peer_connection_t *pc, void *data,
     ngx_uint_t state);
 #if (NGX_SSL)
@@ -36,6 +42,18 @@ typedef void (*ngx_event_save_peer_session_pt)(ngx_peer_connection_t *pc,
 #endif
 
 //定义了load_balance模块实现负载均衡算法的回调函数和相关字段
+/**
+ * ngx_peer_connection_t结构体来表示主动连接。
+ * 不过，一个待处理连接的许多特性在被动连接结构体ngx_connection_t中都定义过了，
+ * 因此，在ngx_peer_connection_t结构体中引用了ngx_connection_t这个结构体.
+ *
+ * ngx_peer_connection_t也有一个ngx_connection_t类型的成员，
+ * 怎么理解这两个结构体之间的关系呢？所有的事件消费模块在每次使用ngx_peer_connection_t对象时，
+ * 一般都需要重新生成一个ngx_peer_connection_t结构体，
+ * 然而，ngx_peer_connection_t对应的ngx_connection_t连接一般还是从连接池中获取，
+ * 因此，ngx_peer_connection_t只是对ngx_connection_t结构体做了简单的包装而已。
+ *
+ */
 struct ngx_peer_connection_s {
     // 一个主动连接实际上也需要ngx_connection_t结构体中的大部分成员，并且出于重用的考虑而定义了connection成员
     ngx_connection_t                *connection;
@@ -54,9 +72,10 @@ struct ngx_peer_connection_s {
     ngx_event_get_peer_pt            get;
     // 与get方法对应的释放连接的方法
     ngx_event_free_peer_pt           free;
-    /*
-    这个data指针仅用于和上面的get,free方法配合传递参数，他的具体含义与实现get方法，free方法的模块相关
-    */
+    /**
+     * 这个data指针仅用于和上面的get,free方法配合传递参数，他的具体含义与实现get方法，free方法的模块相关，
+     * 可参考ngx_event_get_peer_pt和ngx_event_free_peer_pt方法原型中的data参数。
+     */
     void                            *data;
 
 #if (NGX_SSL)

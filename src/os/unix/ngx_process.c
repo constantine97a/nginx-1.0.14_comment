@@ -28,13 +28,46 @@ static void ngx_process_get_status(void);
 int              ngx_argc;
 char           **ngx_argv;
 char           **ngx_os_argv;
-
+/***
+ * 当前操作的进程在ngx_processes中的下标
+ */
 ngx_int_t        ngx_process_slot;
-ngx_socket_t     ngx_channel;
-ngx_int_t        ngx_last_process;
-ngx_process_t    ngx_processes[NGX_MAX_PROCESSES];
 
-//此处定义了所有nginx所支持的信号
+ngx_socket_t     ngx_channel;
+/**
+ * ngx_processes中有意义的ngx_process_t 的元素的最大的Index
+ */
+ngx_int_t        ngx_last_process;
+/***
+ * ngx_processes数组，这个数组仅仅是给master进程使用的
+ * master process通过这个对所有的work process 管理
+ */
+ngx_process_t    ngx_processes[NGX_MAX_PROCESSES];
+/**
+ * 僵尸进程是指一个已经终止、但是其父进程尚未对其进行善后处理获取终止进程的有关信息的进程，这个进程被称为“僵尸进程”(zombie)。
+
+怎样产生僵尸进程
+        一个进程在调用exit命令结束自己的生命的时候，其实它并没有真正的被销毁，而是留下一个称为僵尸进程（Zombie）的数据结构（系统调用exit， 它的作用是使进程退出，但也仅仅限于将一个正常的进程变成一个僵尸进程，并不能将其完全销毁）。
+
+        在Linux进程的状态中，僵尸进程是非常特殊的一种，它已经放弃了几乎所有内存空间，没有任何可执行代码，也不能被调度，仅仅在进程列表中保留一个位 置，记载该进程的退出状态等信息供其他进程收集。除此之外，僵尸进程不再占有任何内存空间。它需要它的父进程来为它收尸，如果他的父进程没安装 SIGCHLD 信号处理函数调用wait或waitpid()等待子进程结束，又没有显式忽略该信号，那么它就一直保持僵尸状态，如果这时父进程结束了， 那么init进程自动会接手这个子进程，为它收尸，它还是能被清除的。但是如果如果父进程是一个循环，不会结束，那么子进程就会一直保持僵尸状态，这就是 为什么系统中有时会有很多的僵尸进程。
+
+怎么查看僵尸进程
+        利用命令ps，可以看到有父进程ID为1的进程是孤儿进程；s(state)状态为Z的是僵尸进程。
+
+注意：孤儿进程(orphan process)是尚未终止但已停止(相当于前台挂起)的进程，但其父进程已经终止，由init收养；而僵尸进程则是已终止的进程，其父进程不一定终止。
+
+**怎样来清除僵尸进程
+        改写父进程，在子进程死后要为它收尸。具体做法是接管SIGCHLD信号。子进程死后， 会发送SIGCHLD信号给父进程，父进程收到此信号后，执行 waitpid()函数为子进程收尸。这是基于这样的原理：就算父进程没有调用wait，内核也会向它发送SIGCHLD消息，尽管对的默认处理是忽略， 如果想响应这个消息，可以设置一个处理函数。
+把父进程杀掉。父进程死后，僵尸进程成为"孤儿进程"，过继给1号进程init，init始终会负责清理僵尸进程，关机或重启后所有僵尸进程都会消失。
+避免Zombie Process的方法
+在SVR4中，如果调用signal或sigset将SIGCHLD的配置设置为忽略,则不会产生僵死子进程。另外,使用SVR4版的 sigaction,则可设置SA_NOCLDWAIT标志以避免子进程僵死。 Linux中也可使用这个，在一个程序的开始调用这个函数signal(SIGCHLD,SIG_IGN)。
+调用fork两次。
+用waitpid等待子进程返回。
+ */
+/**
+ * 此处定义了所有nginx所支持的信号,从上文的资料可知，在master process中要注册sigchld信号的处理函数
+ *
+ */
 ngx_signal_t  signals[] = {
     { ngx_signal_value(NGX_RECONFIGURE_SIGNAL),
       "SIG" ngx_value(NGX_RECONFIGURE_SIGNAL),
@@ -443,7 +476,10 @@ ngx_signal_handler(int signo)
         case SIGIO:
             ngx_sigio = 1;
             break;
-
+        /**
+         * 如果子进程发生退出，Linux内核会想父进程发送SIGCHLD进程，父进程需要调用wait或者waitpid或者显式的忽略该信号，子进程可能会一直
+         * 出于僵尸状态
+         */
         case SIGCHLD:
             ngx_reap = 1;
             break;
@@ -508,13 +544,21 @@ ngx_signal_handler(int signo)
 
     //最终如果信号是sigchld，我们收割僵尸进程(用waitpid)
     if (signo == SIGCHLD) {
+        /***
+         * 获得所有子进程状态
+         *
+         */
         ngx_process_get_status();
     }
 
     ngx_set_errno(err);
 }
 
-
+/**
+ *
+ * 调用ngx_process_get_status方法修改ngx_processes数组中所有子进程的状态,
+ * （通过waitpid系统调用得到意外结束的子进程ID，然后遍历ngx_processes数组找到该子进程ID对应的ngx_process_t结构体，将其exited标志位置为1
+ */
 static void
 ngx_process_get_status(void)
 {
@@ -528,8 +572,13 @@ ngx_process_get_status(void)
     one = 0;
 
     for ( ;; ) {
+        /**
+         * which process status is WHOHANG
+         */
         pid = waitpid(-1, &status, WNOHANG);
-
+        /**
+         * 当pid返回O，退出循环
+         */
         if (pid == 0) {
             return;
         }
@@ -583,7 +632,7 @@ ngx_process_get_status(void)
 
         one = 1;
         process = "unknown process";
-
+        //更新对应的worker_processes中的状态信息
         for (i = 0; i < ngx_last_process; i++) {
             if (ngx_processes[i].pid == pid) {
                 ngx_processes[i].status = status;

@@ -87,6 +87,18 @@ static ngx_open_file_t  ngx_exit_log_file;
 5.主进程循环处理信号
 */
 /**
+ * master进程不需要处理网络事件，它不负责业务的执行，
+ * 只会通过管理worker等子进程来实现重启服务、平滑升级、更换日志文件、配置文件实时生效等功能。
+ * 它会通过检查以下7个标志位来决定ngx_master_process_cycle方法的运行。
+ * sig_atomic_t ngx_reap
+ * sig_atomic_t ngx_terminate
+ * sig_atomic_t ngx_quit  QUITW
+ * sig_atomic_t ngx_reconfigure
+ * sig_atomic_t ngx_reopen
+ * sig_atomic_t ngx_change_binary
+ * sig_atomic_t ngx_noaccept
+ * 具体流程图，请参见 深入理解Nginxde 8.6节
+ *
  * 进入master进程的工作循环中
  *1.主进程设置信号阻塞
  * 2.设置进程标题
@@ -619,7 +631,12 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
     }
 }
 
-
+/***
+ * 收割子进程
+ *
+ * @param cycle
+ * @return  0 if all worker process exist ,otherwise 1
+  */
 static ngx_uint_t
 ngx_reap_children(ngx_cycle_t *cycle)
 {

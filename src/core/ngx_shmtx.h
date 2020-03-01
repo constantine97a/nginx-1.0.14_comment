@@ -12,11 +12,13 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
-/*互斥锁结构 
-ngx_shmtx_t结构涉及两个宏：NGX_HAVE_ATOMIC_OPS、NGX_HVE_POIX_SEM，这两个宏对应着互斥锁的3种不同实现。
-第1种实现：当不支持原子操作时，会使用文件锁来实现ngx_hmtx_t互斥锁，这时它仅有fd和name成员。这两个成员使用上面介绍的文件锁来提供阻塞、非阻塞的互斥锁。
-第2种实现，支持原子操作却又不支持信号量。
-第3种实现，在支持原子操作的同时，操作系统也支持信号量。
+/**
+ * 互斥锁结构
+ * ngx_shmtx_t结构涉及两个宏：NGX_HAVE_ATOMIC_OPS、NGX_HVE_POIX_SEM，这两个宏对应着互斥锁的3种不同实现。
+ * 第1种实现：当不支持原子操作时，会使用文件锁来实现ngx_hmtx_t互斥锁，这时它仅有fd和name成员。
+ * 这两个成员使用上面介绍的文件锁来提供阻塞、非阻塞的互斥锁。
+ * 第2种实现，支持原子操作却又不支持信号量。
+ * 第3种实现，在支持原子操作的同时，操作系统也支持信号量。
 */
 typedef struct {
 #if (NGX_HAVE_ATOMIC_OPS)

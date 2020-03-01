@@ -40,7 +40,11 @@ typedef struct ngx_rbtree_s  ngx_rbtree_t;
 
 typedef void (*ngx_rbtree_insert_pt) (ngx_rbtree_node_t *root,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
-
+/**
+ * ngx_rbtree_t 是一个自平衡二叉查找树，
+ * 在不断地向二叉查找树中添加、删除节点时，二叉查找树自身通过形态的变换，始终保持着一定程度上的平衡，即为自平衡二叉查找树。
+ * ngx_rbtree_t红黑树容器中的元素都是有序的，它支持快速的检索、插入、删除操作，也支持范围查询、遍历等操作。
+ */
 struct ngx_rbtree_s {
     // 指向树的根节点。
     ngx_rbtree_node_t     *root;

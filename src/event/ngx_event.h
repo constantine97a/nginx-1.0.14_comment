@@ -289,14 +289,15 @@ typedef struct {
     启用一个事件，目前事件框架不会调用这个方法，大部分事件驱动模块对于该方法的实现都是与上面的add方法完全一致的
     */
     ngx_int_t  (*enable)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
-    /*
-    禁用一个事件，目前事件框架不会调用这个方法，大部分事件驱动模块对于该方法的实现都是与上面的del方法一致
-    */
+
+    /**
+     * 禁用一个事件，目前事件框架不会调用这个方法，大部分事件驱动模块对于该方法的实现都是与上面的del方法一致
+     */
     ngx_int_t  (*disable)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
 
-    /*
-    向事件驱动机制中添加一个新的连接，这意味着连接上的读写事件都添加到事件驱动机制中了
-    */
+    /**
+     * 向事件驱动机制中添加一个新的连接，这意味着连接上的读写事件都添加到事件驱动机制中了
+     */
     ngx_int_t  (*add_conn)(ngx_connection_t *c);
     // 从事件驱动机制中一出一个连续的读写事件
     ngx_int_t  (*del_conn)(ngx_connection_t *c, ngx_uint_t flags);
@@ -648,7 +649,9 @@ extern ngx_uint_t             ngx_event_flags;
 extern ngx_module_t           ngx_events_module;
 extern ngx_module_t           ngx_event_core_module;
 
-
+/**
+ * 从ngx_cycle_t中获取相应的ctx配置属性
+ */
 #define ngx_event_get_conf(conf_ctx, module)                                  \
              (*(ngx_get_conf(conf_ctx, ngx_events_module))) [module.ctx_index];
 

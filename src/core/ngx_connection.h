@@ -145,7 +145,31 @@ typedef enum {
 #define NGX_LOWLEVEL_BUFFERED  0x0f
 #define NGX_SSL_BUFFERED       0x01
 
-
+/**
+ * Nginx中定义了基本的数据结构ngx_connection_t来表示连接，这个连接表示是客户端主动发起的、
+ * Nginx服务器被动接受的TCP连接，我们可以简单称其为被动连接.
+ *
+ * 有些请求的处理过程中，Nginx会试图主动向其他上游服务器建立连接，
+ * 并以此连接与上游服务器通信，因此，这样的连接与ngx_connection_t又是不同的，
+ * Nginx定义了ngx_peer_connection_t结构体来表示主动连接，
+ * 当然，ngx_peer_connection_t主动连接是以ngx_connection_t结构体为基础实现的.
+ *
+ *
+ * recv、send、recv_chain、send_chain  ,
+ * 这4个成员以方法指针的形式出现，说明每个连接都可以采用不同的接收方法，
+ * 每个事件消费模块都可以灵活地决定其行为。不同的事件驱动机制需要使用的接收、发送方法多半是不一样的.
+ *
+ *
+ * Nginx在接受客户端的连接时，所使用的ngx_connection_t结构体都是在启动阶段就预分配好的，
+ * 使用时从连接池中获取即可。
+ * 在ngx_cycle_t有两个字段，其中connections指向整个连接池数组的首部，
+ * 而free_connections则指向第一个ngx_connection_t空闲连接。
+ *
+ * 一旦有用户发起连接时就从free_connections指向的链表头获取一个空闲的连接，
+ * 同时free_connections再指向下一个空闲连接。而归还连接时只需把该连接插入到free_connections链表表头即可。
+ *
+ * 见<深入理解ngnix> 图 9-1
+ */
 struct ngx_connection_s {
     /*
     连接未使用时，data成员用于充当连接池中空闲连接链表中的next指针。当连接被使用时，data的意义由使用它的nginx模块而定，
@@ -179,9 +203,11 @@ struct ngx_connection_s {
     // 可以记录日志的ngx_log_t对象
     ngx_log_t          *log;
 
-    /*
-    内存池，一般在accept一个新连接时，会创建一个内存池，而在这个连接结束时会销毁内存池。
-    */
+    /**
+     * 内存池，一般在accept一个新连接时，会创建一个内存池，而在这个连接结束时会销毁内存池。
+     * 此处所说的连接指成功建立TCP连接，所有的ngx_connection_t结构都是预分配的，这个内存池的大小将有
+     * 上面的listening 中的pool_size决定。
+     */
     ngx_pool_t         *pool;
 
     //连接客户端的socketaddr结构体
@@ -296,7 +322,12 @@ void ngx_close_connection(ngx_connection_t *c);
 ngx_int_t ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
     ngx_uint_t port);
 ngx_int_t ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text);
-
+/**
+ * 从连接池中 ，s是这条连接的套接字句柄，log则是记录日志的对象
+ * @param s
+ * @param log
+ * @return
+ */
 ngx_connection_t *ngx_get_connection(ngx_socket_t s, ngx_log_t *log);
 void ngx_free_connection(ngx_connection_t *c);
 
