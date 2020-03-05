@@ -497,7 +497,7 @@ ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
 }
 
 /**
- * 初始化ngx_event_core_module
+ * 初始化ngx_event_core_module,ngx_event_core_module模块在启动过程中的主要工作都是在ngx_event_process_init方法中进行的
  * @param cycle
  * @return
  */
@@ -682,13 +682,16 @@ ngx_event_process_init(ngx_cycle_t *cycle)
     }
 #endif
 
-    //定时器初始化
+    //定时器初始化,初始化红黑树实现的ngx_event_timer_rbtree
     if (ngx_event_timer_init(cycle->log) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
     //event module的初始化
     for (m = 0; ngx_modules[m]; m++) {
+        /**
+         * 判断是否是NGX_EVENT_MODULE
+         */
         if (ngx_modules[m]->type != NGX_EVENT_MODULE) {
             continue;
         }
@@ -699,7 +702,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         //拿到event_module的ngx_event_module_t 实现
         module = ngx_modules[m]->ctx;
         
-        //初始化模块
+        //初始化模块，调用
         if (module->actions.init(cycle, ngx_timer_resolution) != NGX_OK) {
             /* fatal */
             exit(2);
@@ -736,6 +739,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
     }
     /**
      * 如果使用了epoll事件驱动模式，那么会为ngx_cycle_t结构体中的files成员预分配句柄。
+     * 其中ngx_event_flags 由事件模块的init事件方法进行设置，见line#706
      *
      */
     if (ngx_event_flags & NGX_USE_FD_EVENT) {

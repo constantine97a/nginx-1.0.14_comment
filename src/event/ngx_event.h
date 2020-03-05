@@ -645,6 +645,9 @@ extern ngx_atomic_t  *ngx_stat_writing;
 
 
 extern sig_atomic_t           ngx_event_timer_alarm;
+/**
+ * 全局的event flag ,比如说NGX_USE_LEVEL_EVENT （水平触发）
+ */
 extern ngx_uint_t             ngx_event_flags;
 extern ngx_module_t           ngx_events_module;
 extern ngx_module_t           ngx_event_core_module;

@@ -323,7 +323,7 @@ ngx_int_t ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
     ngx_uint_t port);
 ngx_int_t ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text);
 /**
- * 从连接池中 ，s是这条连接的套接字句柄，log则是记录日志的对象
+ * 从连接池中 ，s是这条连接的套接字，log则是记录日志的对象
  * @param s
  * @param log
  * @return

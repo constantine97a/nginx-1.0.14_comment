@@ -12,7 +12,9 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
-
+/**
+ * ngx缓存在内存的时间结构，如果需要更新nginx内部的时间只需要更新这个
+ */
 typedef struct {
     time_t      sec;
     ngx_uint_t  msec;

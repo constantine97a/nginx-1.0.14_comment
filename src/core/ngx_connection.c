@@ -731,7 +731,7 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
 
 /***
  * 从连接池中获取一个ngx_connection_t
- * @param s
+ * @param s ngx_socket_t 
  * @param log
  * @return
  */
