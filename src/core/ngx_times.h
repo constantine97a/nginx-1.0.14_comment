@@ -13,7 +13,8 @@
 #include <ngx_core.h>
 
 /**
- * ngx缓存在内存的时间结构，如果需要更新nginx内部的时间只需要更新这个
+ * ngx缓存在内存的时间结构，如果需要更新ngnix内部的时间只需要更新这个，
+ * 除了ngx_time_t的结构体外，ngnix定义了许多全局变量
  */
 typedef struct {
     time_t      sec;
@@ -21,7 +22,9 @@ typedef struct {
     ngx_int_t   gmtoff;
 } ngx_time_t;
 
-
+/**
+ * 初始化进程中的缓存的时间变量，同时会gettimeofday刷新缓存
+ */
 void ngx_time_init(void);
 void ngx_time_update(void);
 void ngx_time_sigsafe_update(void);
@@ -46,6 +49,9 @@ extern volatile ngx_str_t    ngx_cached_http_log_iso8601;
 /*
  * milliseconds elapsed since epoch and truncated to ngx_msec_t,
  * used in event timers
+ */
+/**
+ * 当前的毫秒数，从1970年开始的毫秒数
  */
 extern volatile ngx_msec_t  ngx_current_msec;
 

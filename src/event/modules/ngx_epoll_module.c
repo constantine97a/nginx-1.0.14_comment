@@ -793,9 +793,13 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 
             revents |= EPOLLIN|EPOLLOUT;
         }
-
+        /**
+         * 读事件且事件表示连接是或者的
+         */
         if ((revents & EPOLLIN) && rev->active) {
-
+            /**
+             * rev->accept表示是从listerning的connection中收到的rev事件
+             */
             if ((flags & NGX_POST_THREAD_EVENTS) && !rev->accept) {
                 rev->posted_ready = 1;
 

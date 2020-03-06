@@ -54,6 +54,11 @@ ngx_uint_t            ngx_use_accept_mutex;
 ngx_uint_t            ngx_accept_events;
 ngx_uint_t            ngx_accept_mutex_held;
 ngx_msec_t            ngx_accept_mutex_delay;
+/**
+ * 全局变量，ngx_accept_disabled的值就是一个负数，其绝对值为连接总数的7/8
+ * 也就是当ngx_accept_disabled的正数，
+ * 在当前使用的连接到达总连接数的7/8时，就不会再处理新连接了
+ */
 ngx_int_t             ngx_accept_disabled;
 ngx_file_t            ngx_accept_mutex_lock_file;
 
@@ -252,6 +257,13 @@ ngx_module_t  ngx_event_core_module = {
 };
 
 /* 工作进程事件接收的所有工作都在该函数中完成*/
+/**
+ * 1.调用所使用的事件驱动模块实现的process_events方法，处理网络事件。
+ * 2.处理两个post事件队列中的事件，实际上就是分别调用ngx_event_process_posted(cycle,&ngx_posted_accept_events)
+ *  和ngx_event_process_posted(cycle,&ngx_posted_events)方法
+ * 3.处理定时器事件，实际上就是调用ngx_event_expire_timers()方法.
+ * @param cycle
+ */
 void
 ngx_process_events_and_timers(ngx_cycle_t *cycle)
 {
@@ -298,7 +310,9 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
     }
 
     delta = ngx_current_msec;
-    //调用各种事件驱动机制下的事件处理函数，比如epoll就回调ngx_epoll_process_events
+    /**
+     *  调用各种事件驱动机制下的事件处理函数，比如epoll就回调ngx_epoll_process_events
+     */
     (void) ngx_process_events(cycle, timer, flags);
 
     delta = ngx_current_msec - delta;
@@ -636,7 +650,11 @@ ngx_event_module_init(ngx_cycle_t *cycle)
 
 
 #if !(NGX_WIN32)
-
+/**
+ * 定时器信号的处理函数，设置ngx_event_timer_alarm
+ * 在ngx_epoll_process_events 方法中
+ * @param signo
+ */
 void
 ngx_timer_signal_handler(int signo)
 {
@@ -850,7 +868,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 
         c->listening = &ls[i];
         ls[i].connection = c;
-
+        //从监听的connection中获得rev时间
         rev = c->read;
 
         rev->log = c->log;

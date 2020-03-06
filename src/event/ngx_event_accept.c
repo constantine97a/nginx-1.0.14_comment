@@ -15,6 +15,11 @@ static ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle);
 static void ngx_close_accepted_connection(ngx_connection_t *c);
 
 //这个函数被调用是当listen 句柄有可读事件之后才被调用
+/**
+ * 这个是listening FD的rev事件的的处理函数
+ * 如果有新连接事件出现，则会调用ngx_event_accept
+ * @param ev
+ */
 void
 ngx_event_accept(ngx_event_t *ev)
 {
@@ -296,27 +301,40 @@ ngx_event_accept(ngx_event_t *ev)
         if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
             ev->available--;
         }
-
+        /**
+         * 如果监听事件的available标志位为1，再次循环到第1步，否则ngx_event_accept方法结束,
+    事件的available标志位对应着multi_accept配置项。当available为1时，告诉Nginx一次性尽量多地建立新连接，它的实现原理也就在这里
+         */
     } while (ev->available);
 }
 
-
+/**
+ *在打开accept_mutex锁的情况下，只有调用ngx_trylock_accept_mutex方法后，当前的worker进程才会去试着监听web端口
+ * ngx_process_events_and_timers函数会在调用epoll_wait前现行通过ngx_trylock_accept_mutex 判断是否获得进程间的锁
+ *
+ */
 ngx_int_t
 ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
 {
+    /**
+     * 试图拿到锁，返回值为0，表示获得锁失败，如果返回值为1 表示获得锁
+     */
     if (ngx_shmtx_trylock(&ngx_accept_mutex)) {
 
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "accept mutex locked");
-
+        /**
+         * ngx_accept_mutex_held表示当前进程已经拿到锁了，直接返回 NGX_OK
+         */
         if (ngx_accept_mutex_held
             && ngx_accept_events == 0
             && !(ngx_event_flags & NGX_USE_RTSIG_EVENT))
         {
             return NGX_OK;
         }
-
+        //将所有监听连接的读事件都加入到当前的epoll中
         if (ngx_enable_accept_events(cycle) == NGX_ERROR) {
+            //失败， 释放锁
             ngx_shmtx_unlock(&ngx_accept_mutex);
             return NGX_ERROR;
         }

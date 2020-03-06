@@ -75,6 +75,18 @@ ngx_time_init(void)
 2.缓存索引管理进程中，调用此函数用于标记缓存数据的事件属性；
 3.nginx工作进程在进行事件处理时调用此函数；
 */
+/**
+ * 使用gettimeofday调用以系统时间更新时间缓存，
+ * 6个时间变量都会得到刷新
+ *
+ *
+ * 除了Nginx启动时更新一次时间外，任何更新时间的操作都只能由ngx_epoll_process_events方法执行。
+ * ngx_epoll_process_events方法的代码中，当flags参数中有NGX_UPDATE_TIME标志位，或者ngx_event_timer_alarm标志位为1时，
+ * 就会调用ngx_time_update方法更新缓存时间。
+ *
+ * Nginx还提供了设置更新缓存时间频率的功，通过在nginx.conf文件中的timer_resolution配置项可以设置更新的最小频率，这样就保证了缓存时间的精度，
+ * 请跳转至ngx_event_core_module的
+ */
 void
 ngx_time_update(void)
 {
