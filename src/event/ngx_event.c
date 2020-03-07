@@ -269,12 +269,21 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
 {
     ngx_uint_t  flags;
     ngx_msec_t  timer, delta;
-
+    /**
+     * 如果配置文件中有ngx_timer_resolution，说明用户希望服务器时间精确度为ngx_timer_resolution毫秒
+     * 这个时候设置timer为-1 表示收集事件后直接返回
+     * flag为0表示没有任何附加动作
+     */
     if (ngx_timer_resolution) {
         timer = NGX_TIMER_INFINITE;
         flags = 0;
 
     } else {
+        /**
+         * 如果没有设置 ngx_timer_resolution.则从RB树中获取下一个超时间为多少毫秒
+         * 并将其设置timer
+         * flag 表示需要更新缓存事件，因为等待了会有时间误差
+         */
         timer = ngx_event_find_timer();
         flags = NGX_UPDATE_TIME;
 
@@ -303,6 +312,9 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
                 if (timer == NGX_TIMER_INFINITE
                     || timer > ngx_accept_mutex_delay)  //设置最长延迟多久，再次去争抢锁
                 {
+                    /**
+                     * 如果没有获取到accept_mutex锁，则意味着既不能让当前worker进程频繁地试图抢锁，也不能让它经过太长时间再去抢锁
+                     */
                     timer = ngx_accept_mutex_delay;
                 }
             }
