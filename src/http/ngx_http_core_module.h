@@ -178,7 +178,7 @@ typedef struct {
     用于在执行HTTP请求的任何阶段中快速跳转到NGX_HTTP_SERVER_REWRITE_PHASE阶段处理请求
     */
     ngx_uint_t                 location_rewrite_index;
-} ngx_http_phase_engine_t;
+        } ngx_http_phase_engine_t;
 
 // 该结构用来存储每个阶段的可用的处理函数
 typedef struct {

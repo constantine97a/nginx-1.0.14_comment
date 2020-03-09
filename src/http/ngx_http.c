@@ -10,6 +10,14 @@
 #include <ngx_http.h>
 
 
+/**
+ * http module
+ * HTTP框架大致由1个核心模块（ngx_http_module）、两个HTTP模块（ngx_http_core_module、ngx_http_upstream_module）
+ * 组成，它将负责调度其他HTTP模块来一起处理用户请求.
+ */
+
+
+
 static char *ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static ngx_int_t ngx_http_init_phases(ngx_conf_t *cf,
     ngx_http_core_main_conf_t *cmcf);
@@ -66,6 +74,19 @@ static ngx_int_t ngx_http_add_addrs6(ngx_conf_t *cf, ngx_http_port_t *hport,
     ngx_http_conf_addr_t *addr);
 #endif
 
+/**
+ * HTTP框架至少要完成基础性的工作:
+ * 1).处理所有http{}块内的配置项，管理每个HTTP模块感兴趣的配置项（允许同一个http{}下出现多个server{}、location{}等子配置块，允许同名的配置项同时出现在各种配置块中）
+ * 2).HTTP框架要能够使用事件模块监听Web端口，并处理新连接事件、可读事件、可写事件等.
+ * 3).HTTP框架需要有状态机来分析接收到的TCP字符流是否是完整的HTTP包。
+ * 4).HTTP框架能够根据接收到的HTTP请求中的URI和HTTP头部，
+ * 并以nginx.conf中server_name和location等配置项为依据，
+ * 将请求按照其所在阶段准确地分发到某一个HTTP模块，从而调用它的回调方法来处理该请求
+ * 5).向HTTP模块提供必要的工具方法，可以处理网络I/O（读取HTTP包体、发送HTTP响应）和磁盘I/O。
+ * 6).提供upstream机制帮助HTTP模块访问第三方服务
+ * 7)提供subrequest机制帮助HTTP模块实现子请求
+ */
+
 ngx_uint_t   ngx_http_max_module;
 
 
@@ -78,16 +99,27 @@ ngx_str_t  ngx_http_html_default_types[] = {
     ngx_null_string
 };
 
-/*http模块指令集数组*/
+/**
+ * http模块指令集数组
+ *
+ */
 static ngx_command_t  ngx_http_commands[] = {
 
     { ngx_string("http"), //http指令结构
+      /**
+       *表示是一个MAIN Conf, Block Config，并且没有参数
+       */
       NGX_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
+      /**
+       * 主要功能是创建配置
+       */
       ngx_http_block, //http块执行函数
       0,
       0,
       NULL },
-
+      /**
+       * 哨兵
+       */
       ngx_null_command
 };
 
@@ -98,7 +130,9 @@ static ngx_core_module_t  ngx_http_module_ctx = {
     NULL
 };
 
-
+/**
+ *ngx_http_module 实现了ngx_core_module_t接口
+ */
 ngx_module_t  ngx_http_module = {
     NGX_MODULE_V1,
     &ngx_http_module_ctx,                  /* module context */
@@ -114,7 +148,16 @@ ngx_module_t  ngx_http_module = {
     NGX_MODULE_V1_PADDING
 };
 
-
+/**
+ * 分析HTTP模块的配置的起点。
+ *
+ * 将会分别调用每个HTTP模块的create_main_conf、create_srv_conf、create_loc_conf方法建立3个结构体，
+ * 分别用于存储全局、server相关的、location相关的配置项
+ * @param cf
+ * @param cmd
+ * @param conf
+ * @return
+ */
 static char *
 ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -128,15 +171,17 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_core_main_conf_t   *cmcf;
 
     /* the main http context */
-
+    /**
+     * 创建作为Module运行上下文的配置结构
+     */
     ctx = ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t));
     if (ctx == NULL) {
         return NGX_CONF_ERROR;
     }
 
-	//最核心的地方，可以看到修改了传递进来的conf，也就是将该ctx的指针保存到了全局的cycle->conf_ctx[n]�?    *(ngx_http_conf_ctx_t **) conf = ctx;
-
-
+	//最核心的地方，可以看到修改了传递进来的conf，也就是将该ctx的指针保存到了全局的cycle->conf_ctx[n]
+	//将以上的创建的mudule上下文的结构配置赋值给cycle->conf_ctx[n]
+	*(ngx_http_conf_ctx_t **) conf = ctx;
     /* count the number of the http modules and set up their indices */
     //初始化所有的http module的ctx_index
     ngx_http_max_module = 0;
@@ -151,7 +196,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     //下面是创建http module的对应的main,srv,loc config
     /* the http main_conf context, it is the same in the all http contexts */
-    
+    //现在ngx_http_max_module保持着系统中所有http module的数目
     //开始初始化，可以看到默认会分配max个config
     //创建HTTP对应的conf，因为每个级别(main_conf/srv_conf/loc_conf)都会包含模块的conf
     ctx->main_conf = ngx_pcalloc(cf->pool,
@@ -189,13 +234,15 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
      */
 
     //调用对应的create_xxx_conf回调函数
-    //开始遍历    for (m = 0; ngx_modules[m]; m++) {
+    //开始遍历
+    for (m = 0; ngx_modules[m]; m++) {
         if (ngx_modules[m]->type != NGX_HTTP_MODULE) {
             continue;
         }
         
 		//得到对应的module上下文
 		//疑问：这个“ngx_modules[m]->ctx”是什么时候赋值的呢？？？？
+		//答案：这个ngx_modules[m]->ctx 固定写死在每一个module的初始化声明中
 		module = ngx_modules[m]->ctx;
 		//得到对应的索引     
 		mi = ngx_modules[m]->ctx_index;
@@ -236,8 +283,9 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         module = ngx_modules[m]->ctx;
         
         //如果存在postconfiguratio则调用初始化,真正初始化模块之前需要调用preconfiguration来进行一些操作�?        if (module->preconfiguration) {
+        if (module->preconfiguration) {
             if (module->preconfiguration(cf) != NGX_OK) {
-                return NGX_CONF_ERROR;
+                    return NGX_CONF_ERROR;
             }
         }
     }
@@ -262,7 +310,8 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
     cscfp = cmcf->servers.elts;
 
-    //当http block完全parse完毕之后，就需要merge(main和srv或者srv和loc)相关的config了。不过在每次merge之前都会首先初始化main conf�?    for (m = 0; ngx_modules[m]; m++) {
+    //当http block完全parse完毕之后，就需要merge(main和srv或者srv和loc)相关的config了。不过在每次merge之前都会首先初始化main conf�?
+    for (m = 0; ngx_modules[m]; m++) {
         if (ngx_modules[m]->type != NGX_HTTP_MODULE) {
             continue;
         }
@@ -290,7 +339,8 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
     /* create location trees */
-    //当merge完毕之后，然后就是初始化location tree，创建handler phase，调用postconfiguration，以及变量的初始�?    for (s = 0; s < cmcf->servers.nelts; s++) {
+    //当merge完毕之后，然后就是初始化location tree，创建handler phase，调用postconfiguration，以及变量的初始�?
+    for (s = 0; s < cmcf->servers.nelts; s++) {
 
         clcf = cscfp[s]->ctx->loc_conf[ngx_http_core_module.ctx_index];
 

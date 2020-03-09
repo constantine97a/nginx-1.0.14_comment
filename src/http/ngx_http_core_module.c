@@ -954,7 +954,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
 
 static ngx_http_module_t  ngx_http_core_module_ctx = {
     ngx_http_core_preconfiguration,        /* preconfiguration */
-    NULL,                                  /* postconfiguration */
+    NULL,              /* postconfiguration */
 
     ngx_http_core_create_main_conf,        /* create main configuration */
     ngx_http_core_init_main_conf,          /* init main configuration */
@@ -966,7 +966,10 @@ static ngx_http_module_t  ngx_http_core_module_ctx = {
     ngx_http_core_merge_loc_conf           /* merge location configuration */
 };
 
-
+/**
+ * ngx_http_core_module,ngx_http_core_module模块是第1个HTTP模块，它的ctx_index序号是0,
+ * 尤其是ctx_index需要ngx_http_module进行设置
+ */
 ngx_module_t  ngx_http_core_module = {
     NGX_MODULE_V1,
     &ngx_http_core_module_ctx,             /* module context */
@@ -2831,6 +2834,10 @@ ngx_http_cleanup_add(ngx_http_request_t *r, size_t size)
 
 /**
  * server节点的指令处理Handler
+ * 在解析到server块时，首先会像解析http块一样，建立属于这个server块的ngx_http_conf_ctx_t结构体。
+ * 在ngx_http_conf_ctx_t的3个成员中，main_conf将指向所属的http块下ngx_http_conf_ctx_t结构体的main_conf指针数组，
+ * 而srv_conf和loc_conf都将重新分配指针数组，数组的大小为ngx_http_max_module，
+ * 也就是所有HTTP模块的总数。
  *
  */
 static char *
@@ -2846,13 +2853,20 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
     ngx_http_listen_opt_t        lsopt;
     ngx_http_core_srv_conf_t    *cscf, **cscfp;
     ngx_http_core_main_conf_t   *cmcf;
-
+    /**
+     * 首先创建对应main配置节的ngx_http_conf_ctx_t结构体
+     */
     ctx = ngx_pcalloc(cf->pool, sizeof(ngx_http_conf_ctx_t));
     if (ctx == NULL) {
         return NGX_CONF_ERROR;
     }
-
+    /**
+     * 保存原来的cf的ctx
+     */
     http_ctx = cf->ctx;
+    /**
+     * 将main配置节的main_conf指向http配置节点的main_conf
+     */
     ctx->main_conf = http_ctx->main_conf;//main conf不变
 
     /* the server{}'s srv_conf */
