@@ -335,7 +335,10 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_core_srv_conf_t, underscores_in_headers),
       NULL },
-
+      /**
+       * 在解析srv级别配置项时，如果发现了location{}配置块，就会回调ngx_http_core_location方法
+       * （该方法属于ngx_http_core_module模块）
+       */
     { ngx_string("location"),
       NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_BLOCK|NGX_CONF_TAKE12,
       ngx_http_core_location,
@@ -1033,7 +1036,10 @@ ngx_http_handler(ngx_http_request_t *r)
     ngx_http_core_run_phases(r);
 }
 
-
+/**
+ * NGX_HTTP_POST_READ_PHASE 阶段的checker方法
+ * @param r
+ */
 void
 ngx_http_core_run_phases(ngx_http_request_t *r)
 {
@@ -2911,7 +2917,10 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 
 
     /* the server configuration context */
-
+    /**
+     * 设置ngx_http_core_module模块的ngx_http_core_srv_conf_t的ctx,
+     * 它指向解析server块时新生成的ngx_http_conf_ctx_t结构体.
+     */
     cscf = ctx->srv_conf[ngx_http_core_module.ctx_index];
     cscf->ctx = ctx;
 

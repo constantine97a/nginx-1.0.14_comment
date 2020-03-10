@@ -104,13 +104,15 @@ typedef enum {
     //在还没有查询到URI匹配的location前，这时rewrite重写URL也作为一个独立的HTTP阶段
     NGX_HTTP_SERVER_REWRITE_PHASE,
 
-    //根据URI寻找匹配的location
+    //根据URI寻找匹配的location，这个阶段只能由ngx_http_core_module模块实现，不建议其他HTTP模块重新定义这一阶段的行为
     NGX_HTTP_FIND_CONFIG_PHASE,
 
     //在查询到URI匹配的location之后的rewrite重写URL阶段
     NGX_HTTP_REWRITE_PHASE,
 
-    //用于在rewrite重写URL后重新跳到NGX_HTTP_FIND_CONFIG_PHASE阶段
+    //用于在rewrite重写URL后重新跳到NGX_HTTP_FIND_CONFIG_PHASE阶段，防止错误的nginx.conf配置导致死循环
+    // 这一阶段只有ngx_http_core_module处理，如果一个请求超过10次重定位，认为出现了死循环，
+    //这时，NGX_HTTP_POST_REWRITE_PHASE会向用户返回500，表示服务器内部错误。
     NGX_HTTP_POST_REWRITE_PHASE,
 
     //处理NGX_HTTP_ACCESS_PHASE阶段前
@@ -136,31 +138,46 @@ typedef enum {
 
 typedef struct ngx_http_phase_handler_s  ngx_http_phase_handler_t;
 
+/**
+ *   定义了checker方法的函数原型
+ */
 // 一个HTTP处理阶段中的checker检查方法，仅可以由HTTP框架实现，以此控制HTTP请求的处理流程
 typedef ngx_int_t (*ngx_http_phase_handler_pt)(ngx_http_request_t *r,
     ngx_http_phase_handler_t *ph);
 
+/**
+ * 一个http{}块解析完毕后将会根据nginx.conf中的配置产生由ngx_http_phase_handler_t组成的数组，
+ * 在处理HTTP请求时，一般情况下这些阶段是顺序向后执行的，但ngx_http_phase_handler_t中的next成员使得它们也可以非顺序执行。
+ */
 struct ngx_http_phase_handler_s {
-    /*
-    在处理到某一个HTTP阶段时，HTTP框架将会在checker方法已实现的前提下首先调用checker方法来处理请求，而不会直接调用任何阶段汇总的handler方法。
-    只有在checker方法中才会去调用handler方法。因此，事实上所有的checker方法都是由框架中的ngx_http_core_module模块实现的，且普通的HTTP模块
-    无法重定义checker方法
+    /**
+    在处理到某一个HTTP阶段时，HTTP框架将会在checker方法已实现的前提下首先调用checker方法来处理请求，
+     而不会直接调用任何阶段汇总的handler方法。
+    只有在checker方法中才会去调用handler方法。
+     因此，事实上所有的checker方法都是由框架中的ngx_http_core_module模块实现的，且普通的HTTP模块
+    无法重定义checker方法。
     */
     ngx_http_phase_handler_pt  checker;
 
-    /*
-    除ngx_http_core_module模块以外的HTTP模块，只能通过定义handler方法才能介入某一个HTTP处理阶段以处理请求
+    /**
+       除ngx_http_core_module模块以外的HTTP模块，只能通过定义handler方法才能介入某一个HTTP处理阶段以处理请求
     */
     ngx_http_handler_pt        handler;
 
-    /*
+    /**
     next的设计使得处理阶段不必按照顺序依次执行，既可以向后跳跃数个阶段继续执行，也可以跳跃到之前曾经执行过的某个阶段重新执行。
     通常，next表示下一个处理阶段中的第一个ngx_http_phase_handler_t处理方法
     */
     ngx_uint_t                 next;
 };
 
-
+/**
+ * 一个http{}块解析完毕后将会根据nginx.conf中的配置产生由ngx_http_phase_handler_t组成的数组，
+ * 在处理HTTP请求时，一般情况下这些阶段是顺序向后执行的，但ngx_http_phase_handler_t中的next成员使得它们也可以非顺序执行。
+ * ngx_http_phase_engine_t结构体就是所有ngx_http_phase_handler_t组成的数组,
+ *
+ * ngx_http_phase_engine_t结构体是保存在全局的ngx_http_core_main_conf_t
+ */
 typedef struct {
     /*
     handlers是由ngx_http_phase_handler_t构成的数组首地址，它表示一个请求可能经历的酥油ngx_http_handler_pt处理方法
@@ -178,17 +195,24 @@ typedef struct {
     用于在执行HTTP请求的任何阶段中快速跳转到NGX_HTTP_SERVER_REWRITE_PHASE阶段处理请求
     */
     ngx_uint_t                 location_rewrite_index;
-        } ngx_http_phase_engine_t;
+} ngx_http_phase_engine_t;
 
 // 该结构用来存储每个阶段的可用的处理函数
 typedef struct {
     ngx_array_t              handlers; // 实质上是一个动态数组
 } ngx_http_phase_t;
 
-
+/**
+ * HTTP全局配置项是基础，管理server、location
+ * 等配置块时取决于ngx_http_core_module模块出现在main级别下存储全局配置项的ngx_http_core_main_conf_t结构体
+ */
 typedef struct {
     ngx_array_t                servers;         /* ngx_http_core_srv_conf_t */
 
+    /**
+     * phase_engine控制运行过程中一个HTTP请求所要经过的HTTP处理阶段,
+     * 它将配合ngx_http_request_t结构体中的phase_handler成员使用（phase_handler指定了当前请求应当执行哪一个HTTP阶段）
+     */
     ngx_http_phase_engine_t    phase_engine;
 
     ngx_hash_t                 headers_in_hash;
@@ -223,6 +247,11 @@ typedef struct {
 
     ngx_uint_t                 try_files;       /* unsigned  try_files:1 */
 
+    /**
+     * phases数组更像一个临时变量，它实际上仅会在Nginx启动过程中用到，
+     * 它的唯一使命是按照11个阶段的概念初始化phase_engine中的handlers数组，
+     * 基本上11个phase，每一个phase 都会对应一个数组(ngx_http_phase_t动态数组)
+     */
     ngx_http_phase_t           phases[NGX_HTTP_LOG_PHASE + 1]; //存放所有的phases,主要用于handle的注册,形成一个二维数组
 } ngx_http_core_main_conf_t;
 
@@ -294,7 +323,9 @@ typedef struct {
     ngx_uint_t                 naddrs;
 } ngx_http_port_t;
 
-
+/**
+ * 每监听一个TCP端口，都将使用一个独立的ngx_http_conf_port_t结构体来表示
+ */
 typedef struct {
     // socket 地址家族
     ngx_int_t                  family;
@@ -306,7 +337,10 @@ typedef struct {
     ngx_array_t                addrs;     /* array of ngx_http_conf_addr_t */
 } ngx_http_conf_port_t;
 
-
+/**
+ * Nginx是使用ngx_http_conf_addr_t结构体来表示一个对应着具体地址的监听端口的.
+ * 一个ngx_http_conf_port_t将会对应多个ngx_http_conf_addr_t，而ngx_http_conf_addr_t就是以动态数组的形式保存在addrs成员中的
+ */
 typedef struct {
     // 监听套接字的各种属性
     ngx_http_listen_opt_t      opt;
@@ -332,6 +366,9 @@ typedef struct {
     ngx_http_core_srv_conf_t  *default_server;
 
     // servers 动态数组中的成员将指向ngx_http_core_srv_conf_t结构体
+    /**
+     * server数组将监听端口和server虚拟主机关联起来
+     */
     ngx_array_t                servers;  /* array of ngx_http_core_srv_conf_t */
 } ngx_http_conf_addr_t;
 
