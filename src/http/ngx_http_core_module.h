@@ -97,43 +97,54 @@ typedef struct {
 } ngx_http_listen_opt_t;
 
 //这个结构是定义了HTTP模块处理用户请求的11个阶段
+/**
+ * 这些phase按照先后顺序执行，只有在rewrite之后流程会重新跳转到NGX_HTTP_FIND_CONFIG_PHASE。
+ * 其中，只有7个phase可以注册handler以定制处理过程，其他的只有一个固定的handler:
+ * NGX_HTTP_POST_READ_PHASE
+* NGX_HTTP_SERVER_REWRITE_PHASE,
+* NGX_HTTP_REWRITE_PHASE,
+* NGX_HTTP_PREACCESS_PHASE,
+* NGX_HTTP_ACCESS_PHASE,
+* NGX_HTTP_CONTENT_PHASE,
+*NGX_HTTP_LOG_PHASE
+ */
 typedef enum {
     //在接收到完整的HTTP头部后处理的HTTP阶段
-    NGX_HTTP_POST_READ_PHASE = 0,
+    NGX_HTTP_POST_READ_PHASE = 0, // 读取请求
 
     //在还没有查询到URI匹配的location前，这时rewrite重写URL也作为一个独立的HTTP阶段
-    NGX_HTTP_SERVER_REWRITE_PHASE,
+    NGX_HTTP_SERVER_REWRITE_PHASE, //server级别的rewrite
 
     //根据URI寻找匹配的location，这个阶段只能由ngx_http_core_module模块实现，不建议其他HTTP模块重新定义这一阶段的行为
-    NGX_HTTP_FIND_CONFIG_PHASE,
+    NGX_HTTP_FIND_CONFIG_PHASE,//根据uri查找location
 
     //在查询到URI匹配的location之后的rewrite重写URL阶段
-    NGX_HTTP_REWRITE_PHASE,
+    NGX_HTTP_REWRITE_PHASE,//localtion级别的rewrite
 
     //用于在rewrite重写URL后重新跳到NGX_HTTP_FIND_CONFIG_PHASE阶段，防止错误的nginx.conf配置导致死循环
     // 这一阶段只有ngx_http_core_module处理，如果一个请求超过10次重定位，认为出现了死循环，
     //这时，NGX_HTTP_POST_REWRITE_PHASE会向用户返回500，表示服务器内部错误。
-    NGX_HTTP_POST_REWRITE_PHASE,
+    NGX_HTTP_POST_REWRITE_PHASE,//server、location级别的rewrite都是在这个phase进行收尾工作的
 
     //处理NGX_HTTP_ACCESS_PHASE阶段前
-    NGX_HTTP_PREACCESS_PHASE,
+    NGX_HTTP_PREACCESS_PHASE,//粗粒度的access
 
     //让HTTP模块判断是否允许这个请求访问NGINX服务器
-    NGX_HTTP_ACCESS_PHASE,
+    NGX_HTTP_ACCESS_PHASE,//细粒度的access，比如权限验证、存取控制
 
     //当NGX_HTTP_ACCESS_PHASE阶段中HTTP模块的handler返回不允许访问的错误码的时候，
     //这个阶段负责构造拒绝服务的用户相应
-    NGX_HTTP_POST_ACCESS_PHASE,
+    NGX_HTTP_POST_ACCESS_PHASE,//根据上述两个phase得到access code进行操作
 
     //这个阶段完全是try_files配置项设立的。当HTTP请求访问静态文件资源的时候，try_files配置项
     //可以使这个请求顺序的访问多个静态文件资源。
-    NGX_HTTP_TRY_FILES_PHASE,
+    NGX_HTTP_TRY_FILES_PHASE, //实现try_files指令
 
     //用于处理HTTP请求内容的阶段。这个是大部分HTTP模块最喜欢介入的阶段。
-    NGX_HTTP_CONTENT_PHASE,
+    NGX_HTTP_CONTENT_PHASE,//生成http响应
 
     //处理完请求后记录日志的阶段。
-    NGX_HTTP_LOG_PHASE
+    NGX_HTTP_LOG_PHASE//log模块
 } ngx_http_phases;
 
 typedef struct ngx_http_phase_handler_s  ngx_http_phase_handler_t;
@@ -157,16 +168,24 @@ struct ngx_http_phase_handler_s {
      因此，事实上所有的checker方法都是由框架中的ngx_http_core_module模块实现的，且普通的HTTP模块
     无法重定义checker方法。
     */
+    /* 执行校验，并调用handler函数，同一个phase的handler的checker相同 */
     ngx_http_phase_handler_pt  checker;
 
     /**
        除ngx_http_core_module模块以外的HTTP模块，只能通过定义handler方法才能介入某一个HTTP处理阶段以处理请求
     */
+    /* handler函数指针 */
+
     ngx_http_handler_pt        handler;
 
     /**
+     * 将要执行的下一个HTTP处理阶段的序号
     next的设计使得处理阶段不必按照顺序依次执行，既可以向后跳跃数个阶段继续执行，也可以跳跃到之前曾经执行过的某个阶段重新执行。
     通常，next表示下一个处理阶段中的第一个ngx_http_phase_handler_t处理方法
+    */
+    /*
+    * 指向下一个phase的第一个handler在ngx_http_core_main_conf_t->phase_engine.handlers数组中的下标
+    *
     */
     ngx_uint_t                 next;
 };
@@ -176,8 +195,12 @@ struct ngx_http_phase_handler_s {
  * 在处理HTTP请求时，一般情况下这些阶段是顺序向后执行的，但ngx_http_phase_handler_t中的next成员使得它们也可以非顺序执行。
  * ngx_http_phase_engine_t结构体就是所有ngx_http_phase_handler_t组成的数组,
  *
- * ngx_http_phase_engine_t结构体是保存在全局的ngx_http_core_main_conf_t
+ * ngx_http_phase_engine_t结构体是保存在全局的ngx_http_core_main_conf_t.
  */
+ /**
+  *   ngx_http_core_main_conf_t的phase_engine字段表示phase的执行引擎，它会把所有的phase handler组织成数组，
+  * 元素是ngx_http_phase_handler_t。phase_engine会根据phases数组中注册的handler进行初始化
+  */
 typedef struct {
     /*
     handlers是由ngx_http_phase_handler_t构成的数组首地址，它表示一个请求可能经历的酥油ngx_http_handler_pt处理方法

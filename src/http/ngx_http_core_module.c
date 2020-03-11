@@ -1061,7 +1061,10 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
     }
 }
 
-/* 这个checker用于处理post read和preaccess两个phase。它的作用很简单，就是根据handler的返回值决定继续这个phase的handler的处理，还是调用下一个phase的handler。*/
+/**
+ * 这个checker用于处理post read和preaccess两个phase。它的作用很简单，
+ * 就是根据handler的返回值决定继续这个phase的handler的处理，还是调用下一个phase的handler。
+ * */
 ngx_int_t
 ngx_http_core_generic_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
 {

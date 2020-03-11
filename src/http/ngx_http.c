@@ -353,6 +353,10 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
+    /**
+     * 初始化每个phase对应的handlers数组，以便在执行postconfiguration回调函数时，注册phase handler。
+     * ngx_http_core_main_conf_t->phases数组存放所有的phase。
+     */
     //初始化handler phase
     if (ngx_http_init_phases(cf, cmcf) != NGX_OK) {
         return NGX_CONF_ERROR;
@@ -416,6 +420,9 @@ failed:
 static ngx_int_t
 ngx_http_init_phases(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf)
 {
+    /**
+     * cmcf is core main configuration
+     */
     if (ngx_array_init(&cmcf->phases[NGX_HTTP_POST_READ_PHASE].handlers,
                        cf->pool, 1, sizeof(ngx_http_handler_pt))
         != NGX_OK)
@@ -509,11 +516,12 @@ ngx_http_init_headers_in_hash(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf)
     return NGX_OK;
 }
 
-/* http://blog.csdn.net/chosen0ne/article/details/8051940
-*phase handler初始化
-大致原理就是将所有的phase handler以ngx_http_phase_handler_t->next组织成handler链表，
-处理请求时遍历这个链表。handler处理函数ngx_http_phase_handler_t->handler的调用是在checker中完成的，
-不同的phase具有不同的checker，但是同一个phase的checker相同。调用完这个函数，phase handler的初始化就完成了。
+/**
+ * http://blog.csdn.net/chosen0ne/article/details/8051940
+ * phase handler初始化
+ * 大致原理就是将所有的phase handler以ngx_http_phase_handler_t->next组织成handler链表，
+ * 处理请求时遍历这个链表。handler处理函数ngx_http_phase_handler_t->handler的调用是在checker中完成的，
+ * 不同的phase具有不同的checker，但是同一个phase的checker相同。调用完这个函数，phase handler的初始化就完成了。
 */
 static ngx_int_t
 ngx_http_init_phase_handlers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf)
