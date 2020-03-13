@@ -295,7 +295,8 @@ ngx_event_accept(ngx_event_t *ev)
         log->data = NULL;
         log->handler = NULL;
 
-		//它将完成新连接的最后初始化工作，同时将accept到的新连接放入epoll中，挂在handler上的函数就是ngx_http_init_connection
+		//它将完成新连接的最后初始化工作，同时将accept到的新连接放入epoll中，
+		// 挂在handler上的函数就是ngx_http_init_connection
         ls->handler(c);// 被初始化为 ngx_http_init_connection
 
         if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {

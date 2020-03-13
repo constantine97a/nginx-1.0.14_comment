@@ -194,7 +194,7 @@ struct ngx_connection_s {
     // 以ngx_chain_t链表为参数来发送网络字符流的方法
     ngx_send_chain_pt   send_chain;
 
-    // 这个连接对应的ngx_listening_t监听对象，此连接由listening 监听端口的事件建立
+    // 这个连接对应的ngx_listening_t监听对象，此连接由listening `监听端口的事件建立
     ngx_listening_t    *listening;
 
     // 这个连接上已经发送出去的字节数

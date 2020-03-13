@@ -178,7 +178,11 @@ ngx_http_header_t  ngx_http_headers_in[] = {
     { ngx_null_string, 0, NULL }
 };
 
-/*初始化链接*/
+/**
+ * 初始化链接
+ * HTTP框架在初始化时就会将每个监听ngx_listening_t结构体的handler方法设为ngx_http_init_connection方法
+ * @param c 表示要进行初始化http链接的tcp链接
+ */
 void
 ngx_http_init_connection(ngx_connection_t *c)
 {
@@ -205,12 +209,16 @@ ngx_http_init_connection(ngx_connection_t *c)
     rev = c->read;
 	//设置读handler为ngx_http_init_request,在客户端向服务器发送数据时会被调用，用于初始化并处理客户端请求
     rev->handler = ngx_http_init_request;
+    //对于可写事件，也会设置它的handler回调方法为ngx_http_empty_handler，这个方法不会做任何工作
     c->write->handler = ngx_http_empty_handler;
 
 #if (NGX_STAT_STUB)
     (void) ngx_atomic_fetch_add(ngx_stat_reading, 1);
 #endif
-
+    /**
+     * 如果新连接的读事件ngx_event_t结构体中的标志位ready为1，
+     * 实际上表示这个连接对应的套接字缓存上已经有用户发来的数据，这时就可调用上面说过的ngx_http_init_request方法处理请求
+     */
     if (rev->ready) {//如果接收准备好了，则直接调用ngx_http_init_request
         /* the deferred accept(), rtsig, aio, iocp */
 
@@ -223,14 +231,26 @@ ngx_http_init_connection(ngx_connection_t *c)
         return;
     }
 
-	//添加定时器
+	/**
+	 * 添加定时器
+	 * 将读事件放置在定时器中，设置的超时时间则是nginx.conf中client_header_timeout配置项指定的参数
+	 * 如果经过client_header_timeout时间后这个连接上还没有用户数据到达，
+	 * 则会由定时器触发调用读事件的ngx_http_init_request处理方法。
+	 * 这个时候rev的handler已经设置，由定时器进行调用dd
+	 */
     ngx_add_timer(rev, c->listening->post_accept_timeout);
 
-	//将事件挂载到事件处理器
+    /**
+     * 将事件挂载到事件处理器
+     * ngx_handle_read_event,它可以将一个事件添加到epoll中,
+     * 将调用ngx_handle_read_event方法把连接c的可读事件添加到epoll中,
+     * 这里并没有把可写事件添加到epoll中，因为现在不需要向客户端发送任何数据
+     */
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_reading, -1);
 #endif
+        //如果未能将可读事件添加至epoll中，默认错误处理，将连接关闭
         ngx_http_close_connection(c);
         return;
     }
@@ -3064,7 +3084,12 @@ ngx_http_log_request(ngx_http_request_t *r)
     }
 }
 
-
+/**
+ * 静态方法，关闭链接
+ * 首先设置ngx_connection_t的destroy标记为1 该链接需要被关闭
+ *
+ * @param c
+ */
 static void
 ngx_http_close_connection(ngx_connection_t *c)
 {
@@ -3074,7 +3099,7 @@ ngx_http_close_connection(ngx_connection_t *c)
                    "close http connection: %d", c->fd);
 
 #if (NGX_HTTP_SSL)
-
+    //如果是ssl的链接，需要本函数挂在在ssl关闭的handler上
     if (c->ssl) {
         if (ngx_ssl_shutdown(c) == NGX_AGAIN) {
             c->ssl->handler = ngx_http_close_connection;
