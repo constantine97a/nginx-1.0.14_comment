@@ -634,7 +634,9 @@ ngx_http_init_phase_handlers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf)
         default:
             checker = ngx_http_core_generic_phase;
         }
-		/* 跳过本phase所有handler，也就指向了下一个phase的第一个handler */
+		/**
+		 * 跳过本phase所有handler，也就指向了下一个phase的第一个handler
+		 **/
         n += cmcf->phases[i].handlers.nelts;
 		/* 遍历初始化同一个phase上的handler */
         for (j = cmcf->phases[i].handlers.nelts - 1; j >=0; j--) {

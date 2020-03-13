@@ -143,7 +143,7 @@ typedef enum {
     //用于处理HTTP请求内容的阶段。这个是大部分HTTP模块最喜欢介入的阶段。
     NGX_HTTP_CONTENT_PHASE,//生成http响应
 
-    //处理完请求后记录日志的阶段。
+    //处理完请求后记录日志的阶段。它是用来记录日志的
     NGX_HTTP_LOG_PHASE//log模块
 } ngx_http_phases;
 
@@ -173,9 +173,8 @@ struct ngx_http_phase_handler_s {
 
     /**
        除ngx_http_core_module模块以外的HTTP模块，只能通过定义handler方法才能介入某一个HTTP处理阶段以处理请求
-    */
-    /* handler函数指针 */
-
+     * handler函数指针, ngx_http_request.h line#380
+     */
     ngx_http_handler_pt        handler;
 
     /**

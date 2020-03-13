@@ -1129,7 +1129,14 @@ ngx_http_core_rewrite_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
     return NGX_OK;
 }
 
-/*这是find config phase的checker，用于根据uri查找对应的location*/
+/**
+ * 这是find config phase的checker，用于根据uri查找对应的location
+ * ngx_http_core_find_config_phase方法实际上就是根据NGX_HTTP_SERVER_REWRITE_PHASE步骤重写后的URI检索出匹配的location块的，
+ * 其原理为从location组成的静态二叉查找树中快速检索
+ * @param r
+ * @param ph
+ * @return
+ */
 ngx_int_t
 ngx_http_core_find_config_phase(ngx_http_request_t *r,
     ngx_http_phase_handler_t *ph)
