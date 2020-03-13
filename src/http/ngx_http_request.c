@@ -256,6 +256,7 @@ ngx_http_init_connection(ngx_connection_t *c)
     }
 }
 
+
 /*初始化请求，客户端发送第一次请求时调用，由ngx_http_init_connection设置回调*/
 static void
 ngx_http_init_request(ngx_event_t *rev)
@@ -282,6 +283,7 @@ ngx_http_init_request(ngx_event_t *rev)
     (void) ngx_atomic_fetch_add(ngx_stat_reading, -1);
 #endif
 	/*ngx_event_t的data成员存放事件对应的连接句柄*/
+	//通常data都是指向ngx_connection_t连接对象
     c = rev->data;
 	/* 在ngx_init_connection中对读事件添加了timer，超时直接返回*/
     if (rev->timedout) {
@@ -306,6 +308,7 @@ ngx_http_init_request(ngx_event_t *rev)
     r = hc->request;
 
     if (r) {
+        //如果ngx_http_request_t有值，进行清零
         ngx_memzero(r, sizeof(ngx_http_request_t));
 
         r->pipeline = hc->pipeline;
@@ -315,6 +318,7 @@ ngx_http_init_request(ngx_event_t *rev)
         }
 
     } else {
+        //否则分配空间并分配值
 		/* 为request分配空间 */
         r = ngx_pcalloc(c->pool, sizeof(ngx_http_request_t));
         if (r == NULL) {
@@ -325,6 +329,8 @@ ngx_http_init_request(ngx_event_t *rev)
         hc->request = r;
     }
 
+
+    // ngx_connection_t -> http_request_t -> http_connection
     c->data = r;
     r->http_connection = hc;
 
@@ -423,10 +429,14 @@ ngx_http_init_request(ngx_event_t *rev)
     r->main_conf = cscf->ctx->main_conf;
     r->srv_conf = cscf->ctx->srv_conf;
     r->loc_conf = cscf->ctx->loc_conf;
-	/*上面这段代码是为地址addr:port匹配server config，从而确定该请求的配置。
+	/**
+	 * 上面这段代码是为地址addr:port匹配server config，从而确定该请求的配置。
 	由于nginx支持虚拟主机，所以这里确定了r->virtual_names是该addr:port对应的虚拟主机数组，
 	后面会根据请求的HOST匹配对应的虚拟主机从而确定最终的配置。*/
-    rev->handler = ngx_http_process_request_line; //  将连接读事件的handler设置为ngx_http_process_request_line
+	 /**
+     * 将连接读事件的handler设置为ngx_http_process_request_line
+     */
+    rev->handler = ngx_http_process_request_line;
     r->read_event_handler = ngx_http_block_reading;
 
 #if (NGX_HTTP_SSL)
@@ -528,6 +538,10 @@ ngx_http_init_request(ngx_event_t *rev)
     r->count = 1;
 	/*Store start time of the request*/
     tp = ngx_timeofday();
+    /**
+     * ngx_http_request_t结构体中有两个成员表示这个请求的开始处理时间：start_sec成员和start_msec成员。
+     * 这一步中将会初始化这两个成员,它们会为限速功能服务
+     */
     r->start_sec = tp->sec;
     r->start_msec = tp->msec;
 
