@@ -1094,13 +1094,21 @@ ngx_http_core_generic_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
         r->phase_handler++;
         return NGX_AGAIN;
     }
-	/* 整个请求处理完毕，返回NGX_OK*/
+	/**
+	 * 整个请求处理完毕，返回NGX_OK
+	 * 如果handler方法返回NGX_AGAIN或者NGX_DONE，则意味着刚才的handler方法无法在这一次调度中处理完这一个阶段，
+	 * 它需要多次调度才能完成，也就是说，刚刚执行过的handler方法希望：如果请求对应的事件再次被触发时，
+	 * 将由ngx_http_request_handler通过ngx_http_core_run_phases再次调用这个handler方法.
+	 * 直接返回NGX_OK会使得HTTP框架立刻把控制权交还给epoll事件框架，不再处理当前请求，唯有这个请求上的事件再次被触发才会继续执行。
+	 */
     if (rc == NGX_AGAIN || rc == NGX_DONE) {
         return NGX_OK;
     }
 
     /* rc == NGX_ERROR || rc == NGX_HTTP_...  */
-
+    /**
+     * otherwise 以上错误
+     */
     ngx_http_finalize_request(r, rc);
 
     return NGX_OK;
@@ -1108,6 +1116,18 @@ ngx_http_core_generic_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
 
 /*用于处理server rewrite phase和rewrite phase,逻辑很简单就是执行响应的handler，
 因为phase handler执行流程的跳转是在post rewrite中完成的，所以这里只需要将r->phase_handler++顺序遍历其后的handler即可。*/
+/**
+ * ngx_http_core_rewrite_phase方法充当了用于重写URL的NGX_HTTP_SERVER_REWRITE_PHASE和NGX_HTTP_REWRITE_PHASE这两个阶段的checker方法
+ *
+ * ngx_http_core_rewrite_phase方法与ngx_http_core_generic_phase方法有一个显著的不同点：
+ * 前者永远不会导致跨过同一个HTTP阶段的其他处理方法，
+ * 就直接跳到下一个阶段来处理请求。原因其实很简单，
+ * 可能有许多HTTP模块在NGX_HTTP_SERVER_REWRITE_PHASE和NGX_HTTP_REWRITE_PHASE阶段同时处理重写URL这样的业务，
+ * HTTP框架认为这两个阶段的HTTP模块是完全平等的，序号靠前的HTTP模块优先级并不会更高，它不能决定序号靠后的HTTP模块是否可以再次重写URL
+ * @param r
+ * @param ph
+ * @return
+ */
 ngx_int_t
 ngx_http_core_rewrite_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
 {
@@ -1118,6 +1138,10 @@ ngx_http_core_rewrite_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
 
     rc = ph->handler(r);
 	/* 继续处理本phase的handler */
+	/**
+	 * 如果handler方法返回NGX_DECLINED，将phase_handler加1表示将要执行下一个回调方法。
+	 * 注意，此时返回的是NGX_AGAIN，HTTP框架不会把进程控制权交还给epoll事件框架，而是继续立刻执行请求的下一个回调方法
+	 */
     if (rc == NGX_DECLINED) {
         r->phase_handler++;
         return NGX_AGAIN;
@@ -1296,13 +1320,29 @@ ngx_http_core_post_rewrite_phase(ngx_http_request_t *r,
 }
 
 //这是access phase的checker,细粒度的access
+/**
+ * ngx_http_core_access_phase方法是仅用于NGX_HTTP_ACCESS_PHASE阶段的处理方法，
+ * 这一阶段用于控制用户发起的请求是否合法，如检测客户端的IP地址是否允许访问.
+ * 它涉及nginx.conf配置文件中satisfy配置项的参数值
+ * all:表示所有的模块都是平等的共同起作用的
+ * any:表示只要有一个模块是返回正常，则可以进行下一阶段。
+ * @param r
+ * @param ph
+ * @return
+ */
 ngx_int_t
 ngx_http_core_access_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
 {
     ngx_int_t                  rc;
     ngx_http_core_loc_conf_t  *clcf;
 	/* 只针对主请求处理 */
+	/**
+	 * ngx_http_init_request方法会把main指针指向其自身，而由这个请求派生出的其他子请求中的main指针，
+	 * 仍然会指向ngx_http_init_request方法初始化的原始请求。因此，检查main成员与ngx_http_request_t自身的指针是否相等即可.
+	 * 非常精妙的设计
+	 * */
     if (r != r->main) {
+        //跳转至下一个阶段处理非主请求
         r->phase_handler = ph->next;
         return NGX_AGAIN;
     }
