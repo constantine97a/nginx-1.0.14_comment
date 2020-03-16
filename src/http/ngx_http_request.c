@@ -755,7 +755,9 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 
 #endif
 
-/*用来处理请求行，会不断调用ngx_http_read_request_header从socket读取头部并保存在request的header_in字段中*/
+/**
+ * 用来处理请求行，会不断调用ngx_http_read_request_header从socket读取头部并保存在request的header_in字段中.
+ **/
 static void
 ngx_http_process_request_line(ngx_event_t *rev)
 {
@@ -766,7 +768,9 @@ ngx_http_process_request_line(ngx_event_t *rev)
     ngx_http_request_t        *r;
     ngx_http_core_srv_conf_t  *cscf;
 	//从rev中获取连接以及请求
+    //rev->data 是ngx_connection_t
     c = rev->data;
+    //ngx_request_t
     r = c->data;
 
 	ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0,
@@ -1008,6 +1012,10 @@ ngx_http_process_request_line(ngx_event_t *rev)
 }
 
 //处理请求头
+/**
+ * ngx_http_process_request_headers方法的目的就在于接收到当前请求全部的HTTP头部
+ * @param rev
+ */
 static void
 ngx_http_process_request_headers(ngx_event_t *rev)
 {
@@ -1204,7 +1212,7 @@ ngx_http_read_request_header(ngx_http_request_t *r)
     rev = c->read;
 
     n = r->header_in->last - r->header_in->pos;
-
+    //如果header_in非空直接退出函数
     if (n > 0) {
         return n;
     }
@@ -1234,7 +1242,9 @@ ngx_http_read_request_header(ngx_http_request_t *r)
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "client closed prematurely connection");
     }
-
+    /**
+     * 当n=0说明未能读取数据，返回NGX_ERROR
+     */
     if (n == 0 || n == NGX_ERROR) {
         c->error = 1;
         c->log->action = "reading client request headers";
@@ -1242,13 +1252,20 @@ ngx_http_read_request_header(ngx_http_request_t *r)
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         return NGX_ERROR;
     }
-
+    /**
+     * 讲header_in的last向后推n个数位
+     */
     r->header_in->last += n;
 
     return n;
 }
 
-
+/**
+ * 分配更大、更多的缓冲区
+ * @param r
+ * @param request_line
+ * @return  NGX_DECLINED,NGX_ERROR,NGX_OK
+ */
 static ngx_int_t
 ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
     ngx_uint_t request_line)
@@ -1647,7 +1664,12 @@ ngx_http_process_request_header(ngx_http_request_t *r)
     return NGX_OK;
 }
 
-//处理请求，设置读写事件的handler
+/**
+ * 处理请求，设置读写事件的handler
+ * ngx_http_process_request方法只是处理请求的开始，对于基于事件驱动的异步HTTP框架来说，处理请求并不是一步可以完成的，
+ * 所以我们也会讨论后续TCP连接上的回调方法ngx_http_request_handler的流程
+ * @param r
+ */
 static void
 ngx_http_process_request(ngx_http_request_t *r)
 {
@@ -1851,7 +1873,12 @@ found:
     return NGX_OK;
 }
 
-
+/**
+ * ngx_http_request_handler是HTTP请求上读/写事件的回调方法.
+ * 在ngx_event_t结构体表示的事件中，data成员指向了这个事件对应的ngx_connection_t连接，在HTTP框架的ngx_connection_t
+ * 结构体中的data成员则指向了ngx_http_request_t结构体
+ * @param ev
+ */
 static void
 ngx_http_request_handler(ngx_event_t *ev)
 {

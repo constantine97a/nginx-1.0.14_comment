@@ -1037,7 +1037,12 @@ ngx_http_handler(ngx_http_request_t *r)
 }
 
 /**
+ * ngx_http_core_main_conf_t结构体的phase_engine成员即可依次调用各个HTTP模块来共同处理一个请求
  * NGX_HTTP_POST_READ_PHASE 阶段的checker方法
+ *
+ * ngx_http_phase_handler_t处理阶段的checker方法，而不会执行handler方法，
+ * 这是因为handler方法其实仅能在checker方法中被调用，而且checker方法由HTTP框架实现，
+ * 所以可以控制各HTTP模块实现的处理方法在不同的阶段中采用不同的调用行为。
  * @param r
  */
 void

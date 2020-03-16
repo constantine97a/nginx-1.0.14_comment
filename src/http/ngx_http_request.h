@@ -402,9 +402,9 @@ struct ngx_http_request_s {
     /*
     在接收完HTTP头部，第一次在业务上处理HTTP请求时，HTTP框架提供的处理方法是ngx_http_process_request。
     但如果该方法无法一次处理完该请求的全部业务，在归还控制权到epoll事件模块后，该请求再次被回调时，将通过ngx_http_request_handler方法来处理，
-    而这个方法中对于可读事件的处理就是调用read_event_handler处理请求。也就是说，HTTP模块希望在底层处理请求的读事件，重新实现read_evet_handler方法。
+    而这个方法中对于可读事件的处理就是调用read_event_handler处理请求。也就是说，HTTP模块希望在底层处理请求的读事件，重新实现read_event_handler方法。
     */
-    /*nginx使用的是reqctor模式，这里包含的xxx_event_handler实际上就是注册到对应时间的handler*/
+    /*nginx使用的是reqctor模式，这里包含的xxx_event_handler实际上就是注册到对应事件的的handler*/
     ngx_http_event_handler_pt         read_event_handler;
 
     /*
