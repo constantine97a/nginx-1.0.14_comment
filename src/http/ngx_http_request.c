@@ -1745,7 +1745,10 @@ ngx_http_process_request(ngx_http_request_t *r)
     r->read_event_handler = ngx_http_block_reading;
 
     ngx_http_handler(r);
-	//? 处理subrequest 
+	//? 处理subrequest
+	/**
+	 * 就是调用ngx_http_run_posted_requests方法处理post请求
+	 */
     ngx_http_run_posted_requests(c);
 }
 
@@ -1906,6 +1909,17 @@ ngx_http_request_handler(ngx_event_t *ev)
 }
 
 //驱动子请求运行
+/**
+ * HTTP框架无论是调用ngx_http_process_request方法（首次从业务上处理请求）
+ * 还是ngx_http_request_handler方法（TCP连接上后续的事件触发时）处理请求，
+ * 最后都有一个步骤，就是调用ngx_http_run_posted_requests方法处理post请求.
+ *
+ *
+ * subrequest机制有以下两个特点：
+ *  ❑ 从业务上把一个复杂的请求拆分成多个子请求，由这些子请求共同合作完成实际的用户请求。
+ *  ❑ 每一个HTTP模块通常只需要关心一个请求，而不用试图掌握派生出的所有子请求，这极大地降低了模块的开发复杂度。
+ * @param c
+ */
 void
 ngx_http_run_posted_requests(ngx_connection_t *c)
 {
@@ -1914,18 +1928,24 @@ ngx_http_run_posted_requests(ngx_connection_t *c)
     ngx_http_posted_request_t  *pr;
 
     for ( ;; ) {
-
+        /**
+         * 如果连接已经被销毁了
+         */
         if (c->destroyed) {
             return;
         }
-
+        /**
+         * 从连接处拿到request请求
+         */
         r = c->data;
         pr = r->main->posted_requests;         //获取待执行的请求链表
 
         if (pr == NULL) {
             return;
         }
-
+        /**
+         * 指针向后移动一位
+         */
         r->main->posted_requests = pr->next;	//移除头结点
 
         r = pr->request;					//得到当前待执行的请求
@@ -1935,7 +1955,11 @@ ngx_http_run_posted_requests(ngx_connection_t *c)
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http posted request: \"%V?%V\"", &r->uri, &r->args);
-
+        /**
+         * 调用这个post请求ngx_http_request_t结构体中的write_event_handler方法。
+         * 为什么不是执行read_event_handler方法呢？原因很简单，子请求不是被网络事件驱动的，
+         * 因此，执行post请求时就相当于有可写事件，由Nginx主动做出动作
+         */
         r->write_event_handler(r);			//执行请求的handler
     }
 }
@@ -3007,7 +3031,12 @@ ngx_http_post_action(ngx_http_request_t *r)
     return NGX_OK;
 }
 
-
+/**
+ * 这就要求每个操作在“认为”自身的动作结束时，都得最终调用到ngx_http_close_request方法，
+ * 该方法会自动检查引用计数，当引用计数为0时才真正地销毁请求
+ * @param r
+ * @param rc
+ */
 static void
 ngx_http_close_request(ngx_http_request_t *r, ngx_int_t rc)
 {
@@ -3025,10 +3054,16 @@ ngx_http_close_request(ngx_http_request_t *r, ngx_int_t rc)
 
     r->count--;
 
+    /**
+     * 将引用计数减去1后，如果当前的引用计数大于1，退出
+     */
     if (r->count || r->blocked) {
         return;
     }
 
+    /**
+     * 如果计数为0 ，那么释放request的资源，并且关闭连接
+     */
     ngx_http_free_request(r, rc);
     ngx_http_close_connection(c);
 }

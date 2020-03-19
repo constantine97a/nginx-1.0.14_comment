@@ -1340,6 +1340,7 @@ ngx_http_core_access_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
 	 * ngx_http_init_request方法会把main指针指向其自身，而由这个请求派生出的其他子请求中的main指针，
 	 * 仍然会指向ngx_http_init_request方法初始化的原始请求。因此，检查main成员与ngx_http_request_t自身的指针是否相等即可.
 	 * 非常精妙的设计
+	 * 如果当前请求只是一个派生出的子请求的话，是不需要执行NGX_HTTP_ACCESS_PHASE阶段的处理方法的，那么直接将phase_handler设为下一个阶段
 	 * */
     if (r != r->main) {
         //跳转至下一个阶段处理非主请求
@@ -1357,6 +1358,12 @@ ngx_http_core_access_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
         return NGX_AGAIN;
     }
 	/* 请求处理完毕 */
+	/**
+	 * 返回NGX_AGAIN或者NGX_DONE意味着当前的NGX_HTTP_ACCESS_PHASE阶段没有一次性执行完毕，
+	 * 所以在这一步中会暂时结束当前请求的处理，
+	 * 将控制权交还给事件模块，ngx_http_core_access_phase方法结束。
+	 * 当请求中对应的事件再次触发时才会继续处理该请求
+	 */
     if (rc == NGX_AGAIN || rc == NGX_DONE) {
         return NGX_OK;
     }
@@ -1622,6 +1629,13 @@ ngx_http_core_try_files_phase(ngx_http_request_t *r,
 }
 
 /* 这个checker处理content phase，也就是用于生成响应内容的，我们编写的模块大部分是在这个phase执行的*/
+/**
+ * ngx_http_core_content_phase是NGX_HTTP_CONTENT_PHASE阶段的checker方法，可以说它是我们开发HTTP模块时最常用的一个阶段了。
+ * 顾名思义，NGX_HTTP_CONTENT_PHASE阶段用于真正处理请求的内容
+ * @param r
+ * @param ph
+ * @return
+ */
 ngx_int_t
 ngx_http_core_content_phase(ngx_http_request_t *r,
     ngx_http_phase_handler_t *ph)

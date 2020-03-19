@@ -492,7 +492,7 @@ struct ngx_http_request_s {
     ngx_http_post_subrequest_t       *post_subrequest;/*指向该请求的子请求*/
 
     /*
-    所有自请求都是通过posted_requests这个单链表来链接起来的，执行post子请求时调用的ngx_http_run_posted_requests
+    所有子请求都是通过posted_requests这个单链表来链接起来的，执行post子请求时调用的ngx_http_run_posted_requests
     方法就是通过遍历该单链表来执行子请求的。
     */
     ngx_http_posted_request_t        *posted_requests;

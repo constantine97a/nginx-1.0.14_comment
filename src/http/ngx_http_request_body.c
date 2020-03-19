@@ -37,8 +37,12 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     ngx_http_request_body_t   *rb;
     ngx_http_core_loc_conf_t  *clcf;
 
+    //首先把该请求对应的原始请求的引用计数加1，这同时是在要求每一个HTTP模块在传入的post_handler方法被回调时，
+    // 务必调用类似ngx_http_finalize_request的方法去结束请求，否则引用计数会始终无法清零，从而导致请求无法释放
     r->main->count++;
 
+    //如果request_body不为null,已经读过了，
+    // 如果discard_body为1，则证明曾经执行过丢弃包体的方法，现在包体正在被丢弃中，仍然跳到第2步执行
     if (r->request_body || r->discard_body) {
         post_handler(r);
         return NGX_OK;
@@ -55,6 +59,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
     r->request_body = rb;
 
+    //判断content_lengt>0 只有>0继续执行读取，否则执行post_handler
     if (r->headers_in.content_length_n < 0) {
         post_handler(r);
         return NGX_OK;
@@ -107,7 +112,8 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
      *     rb->buf = NULL;
      *     rb->rest = 0;
      */
-
+    //有可能提前先读取到了http header ，所以检查header_in 缓冲区是否由未被解析成header的内容
+    //如果有的话
     preread = r->header_in->last - r->header_in->pos;
 
     if (preread) {
