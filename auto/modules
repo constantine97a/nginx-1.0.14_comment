@@ -355,7 +355,7 @@ fi
 #    . $NGX_OBJS/auto
 #fi
 
-
+#在configure命令执行到auto/modules脚本时，将在生成的ngx_modules.c文件中加入定制的r第三方模块。
 if test -n "$NGX_ADDONS"; then
 
     echo configuring additional modules
@@ -382,7 +382,9 @@ if [ $MAIL_SSL = YES ]; then
     USE_OPENSSL=YES
 fi
 
-
+#如何生成数组的
+#首先是核心模块和事件模块
+#核心模块的代码包含在core中，event模块中的代码包含在event中
 modules="$CORE_MODULES $EVENT_MODULES"
 
 
@@ -438,7 +440,7 @@ if [ $MAIL = YES ]; then
     MAIL_SRCS="$MAIL_SRCS $MAIL_PROXY_SRCS"
 fi
 
-
+# google的性能工具模块是否开启
 if [ $NGX_GOOGLE_PERFTOOLS = YES ]; then
     modules="$modules $NGX_GOOGLE_PERFTOOLS_MODULE"
     NGX_MISC_SRCS="$NGX_MISC_SRCS $NGX_GOOGLE_PERFTOOLS_SRCS"
@@ -449,7 +451,7 @@ if [ $NGX_CPP_TEST = YES ]; then
     NGX_MISC_SRCS="$NGX_MISC_SRCS $NGX_CPP_TEST_SRCS"
 fi
 
-
+#以下叫做cat  end 在两个END之间的内容会被写入到 $NGX_MODULES_C
 cat << END                                    > $NGX_MODULES_C
 
 #include <ngx_config.h>
