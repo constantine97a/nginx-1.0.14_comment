@@ -20,7 +20,7 @@ echo > $NGX_AUTOCONF_ERR
 # 向objs/ngx_auto_config.h写入命令行带的参数
 echo "#define NGX_CONFIGURE \"$NGX_CONFIGURE\"" > $NGX_AUTO_CONFIG_H
 
-# 判断DEBUG标志，如果有，在objs/ngx_auto_config.h文件中写入DEBUG宏
+# 判断DEBUG标志，如果有，在objs/ngx_auto_config.h($NGX_AUTO_CONFIG_H指向的文件)文件中写入DEBUG宏
 if [ $NGX_DEBUG = YES ]; then
     have=NGX_DEBUG . auto/have
 fi
@@ -38,6 +38,7 @@ if test -z "$NGX_PLATFORM"; then
 
     NGX_PLATFORM="$NGX_SYSTEM:$NGX_RELEASE:$NGX_MACHINE";
 
+    #如果NGX_SYSTEM则设置成Win32
     case "$NGX_SYSTEM" in
         MINGW32_*)
             NGX_PLATFORM=win32
@@ -57,7 +58,7 @@ if [ "$NGX_PLATFORM" != win32 ]; then
     . auto/headers
 fi
 
-# 对于当前操作系统，定义一些特定的操作系统相关的方法，并检查当前环境是否支持。
+# 对于当前操作系统，定义一些特定的操作系统相关的方法，并检查当前环境是否支持。例如如果对于Linux，调用sched_setaffinity设置进程优先级
 . auto/os/conf
 
 # 定义类Unix操作系统中通用的头文件和系统调用等，并检查当前环境是否支持

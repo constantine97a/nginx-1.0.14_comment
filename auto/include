@@ -12,7 +12,7 @@ checking for $ngx_include
 
 END
 
-
+#通过这种导入的到一个测试文件，并使用CC编译的方式进行检查文件是否存在
 ngx_found=no
 
 cat << END > $NGX_AUTOTEST.c
