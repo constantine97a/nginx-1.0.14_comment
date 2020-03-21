@@ -1,7 +1,10 @@
 
 # Copyright (C) Igor Sysoev
 # Copyright (C) Nginx, Inc.
-
+#主要设定MakeFile的路径地址，并创建Makefile
+#$NGX_OBJS/ngx_modules.c路径地址
+#$NGX_OBJS/ngx_auto_headers.h路径地址
+#$NGX_OBJS/ngx_auto_config.h路径地址
 
 NGX_MAKEFILE=$NGX_OBJS/Makefile
 NGX_MODULES_C=$NGX_OBJS/ngx_modules.c
