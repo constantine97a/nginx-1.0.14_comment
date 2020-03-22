@@ -76,6 +76,7 @@ fi
 . auto/lib/conf
 
 # 处理nginx安装后的路径
+# 如果当前$NGX_PREFIX为.表示本地目录，那么设置地址默认地址为/usr/local/nginx，并设置在$NGX_AUTO_CONFIG_H头文件中
 case ".$NGX_PREFIX" in
     .)
         NGX_PREFIX=${NGX_PREFIX:-/usr/local/nginx}

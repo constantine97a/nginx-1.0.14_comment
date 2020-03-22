@@ -4,7 +4,7 @@
 
 #以下是生成MakeFile的Shell
 echo "creating $NGX_MAKEFILE"
-
+#创建文件夹
 mkdir -p $NGX_OBJS/src/core $NGX_OBJS/src/event $NGX_OBJS/src/event/modules \
          $NGX_OBJS/src/os/unix $NGX_OBJS/src/os/win32 \
          $NGX_OBJS/src/http $NGX_OBJS/src/http/modules \

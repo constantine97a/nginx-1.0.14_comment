@@ -3,6 +3,7 @@
 # Copyright (C) Nginx, Inc.
 
 
+#判断是否使用PERL
 if [ $USE_PERL = YES ]; then
 
     cat << END                                                >> $NGX_MAKEFILE
@@ -161,7 +162,7 @@ END
 
 fi
 
-
+#在项目根目录上创建Makefile
 # create Makefile
 
 cat << END >> Makefile
