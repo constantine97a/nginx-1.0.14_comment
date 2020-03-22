@@ -225,7 +225,6 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NULL },
     /**
      * server节点的指令处理
-     *
      */
     { ngx_string("server"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_MULTI|NGX_CONF_NOARGS,
@@ -233,15 +232,17 @@ static ngx_command_t  ngx_http_core_commands[] = {
       0,
       0,
       NULL },
-/**
- * 语法：connection_pool_size size;
- * 默认：connection_pool_size 256;
- * 配置块：http、server
- *
- * Nginx对于每个建立成功的TCP连接会预先分配一个内存池，上面的size配置项将指定这个内存池的初始大小
- * （即ngx_connection_t结构体中的pool内存池初始大小），用于减少内核对于小块内存的分配次数。
- * 需慎重设置，因为更大的size会使服务器消耗的内存增多，而更小的size则会引发更多的内存分配次数。
- */
+
+    /**
+     * 语法：connection_pool_size size;
+     * 默认：connection_pool_size 256;
+     * 配置块：http、server
+     *
+     * Nginx对于每个建立成功的TCP连接会预先分配一个内存池，上面的size配置项将指定这个内存池的初始大小
+     * （即ngx_connection_t结构体中的pool内存池初始大小），用于减少内核对于小块内存的分配次数。
+     * 需慎重设置，因为更大的size会使服务器消耗的内存增多，而更小的size则会引发更多的内存分配次数。
+     */
+
     { ngx_string("connection_pool_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
