@@ -217,7 +217,8 @@ ngx_http_init_connection(ngx_connection_t *c)
 #endif
     /**
      * 如果新连接的读事件ngx_event_t结构体中的标志位ready为1，
-     * 实际上表示这个连接对应的套接字缓存上已经有用户发来的数据，这时就可调用上面说过的ngx_http_init_request方法处理请求
+     * 实际上表示这个连接对应的套接字缓存上已经有用户发来的数据，这时就可调用上面说过的ngx_http_init_request方法处理请求,
+     * 因为实际上随着建立连接请求到来，tcp 的读缓冲区中已经可能由相应的请求数据了，需要直接则直接调用ngx_http_init_request接受数据
      */
     if (rev->ready) {//如果接收准备好了，则直接调用ngx_http_init_request
         /* the deferred accept(), rtsig, aio, iocp */
@@ -232,11 +233,10 @@ ngx_http_init_connection(ngx_connection_t *c)
     }
 
 	/**
-	 * 添加定时器
+	 * 添加定时器,监控请求是否超时
 	 * 将读事件放置在定时器中，设置的超时时间则是nginx.conf中client_header_timeout配置项指定的参数
-	 * 如果经过client_header_timeout时间后这个连接上还没有用户数据到达，
-	 * 则会由定时器触发调用读事件的ngx_http_init_request处理方法。
-	 * 这个时候rev的handler已经设置，由定时器进行调用dd
+	 * 也就是说，如果经过client_header_timeout时间后这个连接上还没有用户数据到达，则超时
+	 * post_accept_timeout是client_header_timeout
 	 */
     ngx_add_timer(rev, c->listening->post_accept_timeout);
 
@@ -285,7 +285,10 @@ ngx_http_init_request(ngx_event_t *rev)
 	/*ngx_event_t的data成员存放事件对应的连接句柄*/
 	//通常data都是指向ngx_connection_t连接对象
     c = rev->data;
-	/* 在ngx_init_connection中对读事件添加了timer，超时直接返回*/
+	/**
+	 * 在ngx_http_init_connection中对读事件添加了timer，超时直接返回,
+	 * 超时时间就是配置文件中的client_header_timeout
+	 */
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
 
@@ -341,8 +344,8 @@ ngx_http_init_request(ngx_event_t *rev)
 	/**
 	* ngx_listening_t的servers存放监听同一端口的server，但它们的监听的地址可以不同。
 	*
-	*            port
-	*         /   |   \
+	*                port
+	*             /   |   \
 	*          addr1 addr2 addr3
 	*           |     |     |
 	*          conf1 conf2  conf3
@@ -1988,6 +1991,14 @@ ngx_http_post_request(ngx_http_request_t *r, ngx_http_posted_request_t *pr)
 }
 
 //请求或者子请求结束会调用该函数
+/**
+ * 执行ngx_http_finalize_request销毁请求
+ * rc表示上一阶段执行的返回码
+ *
+ *
+ * @param r
+ * @param rc
+ */
 void
 ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 {
@@ -2018,6 +2029,9 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 	//执行子请求的回调函数
+	/**
+	 * request和原始请求不一致，说明是子请求
+	 */
     if (r != r->main && r->post_subrequest) {
         rc = r->post_subrequest->handler(r, r->post_subrequest->data, rc);
     }

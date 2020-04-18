@@ -277,6 +277,10 @@ struct ngx_http_upstream_s {
     ngx_http_upstream_headers_in_t   headers_in;
 
     /* 通过resolved可以直接指定上游服务器地址 */
+    /**
+     * 用户能够以任意方式指定上游服务器的IP地址,resolved可以动态的解析，如
+     * 可以从请求的URL或HTTP头部中动态地获取上游服务器地址
+     */
     ngx_http_upstream_resolved_t    *resolved;
 
     /* buffer成员存储接收自上游服务器发来的相应内容 */

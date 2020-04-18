@@ -8,6 +8,13 @@ aux_source_directory(./src/event/modules SRC_LIST)
 aux_source_directory(./src/os/unix SRC_LIST)
 aux_source_directory(./src/http SRC_LIST)
 aux_source_directory(./src/http/modules SRC_LIST)
+aux_source_directory(./src/addon/chapter3/helloworld SRC_LIST)
+aux_source_directory(./src/addon/chapter3/sendfile SRC_LIST)
+aux_source_directory(./src/addon/chapter4/ SRC_LIST)
+aux_source_directory(./src/addon/chapter5/subrequest SRC_LIST)
+aux_source_directory(./src/addon/chapter5/upstream SRC_LIST)
+aux_source_directory(./src/addon/chapter6 SRC_LIST)
+
 
 add_executable(${PROJECT_NAME} ${SRC_LIST})
 

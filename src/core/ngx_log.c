@@ -79,6 +79,15 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 
 #else
 
+/**
+ * Nginx的日志模块记录日志的核心功能是由ngx_log_error_core方法实现的，
+ * ngx_log_error宏和ngx_log_debug宏只是对它做了简单的封装，一般情况下记录日志时只需要使用这两个宏。
+ * @param level
+ * @param log
+ * @param err
+ * @param fmt
+ * @param args
+ */
 void
 ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
     const char *fmt, va_list args)

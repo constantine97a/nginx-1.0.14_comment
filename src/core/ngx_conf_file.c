@@ -1429,13 +1429,17 @@ ngx_conf_set_enum_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t        *value;
     ngx_conf_enum_t  *e;
 
+
+    //找到需要设置值在conf中的Offset
     np = (ngx_uint_t *) (p + cmd->offset);
 
+    // 已经被设置有值后，返回信息”已经设置过“
     if (*np != NGX_CONF_UNSET_UINT) {
         return "is duplicate";
     }
 
     value = cf->args->elts;
+    //从command 中获取枚举值
     e = cmd->post;
 
     for (i = 0; e[i].name.len != 0; i++) {

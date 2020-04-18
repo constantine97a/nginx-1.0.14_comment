@@ -59,7 +59,7 @@ typedef struct {
     open((const char *) name, mode|create|O_BINARY, access)
 
 #else
-//封装
+//封装open系统的调用
 #define ngx_open_file(name, mode, create, access)                            \
     open((const char *) name, mode|create, access)
 
