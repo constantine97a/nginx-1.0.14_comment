@@ -992,7 +992,13 @@ ngx_drain_connections(void)
     }
 }
 
-
+/**
+ * 获取连接ngx_connection_t的的socket绑定的本地地址
+ * @param c
+ * @param s
+ * @param port
+ * @return
+ */
 ngx_int_t
 ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
     ngx_uint_t port)
@@ -1005,7 +1011,7 @@ ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
     ngx_uint_t            i;
     struct sockaddr_in6  *sin6;
 #endif
-
+    // 判断local_sockaddr
     switch (c->local_sockaddr->sa_family) {
 
 #if (NGX_HAVE_INET6)
@@ -1024,7 +1030,7 @@ ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
         addr = sin->sin_addr.s_addr;
         break;
     }
-
+    //addr是地址的数字形式
     if (addr == 0) {
 
         len = NGX_SOCKADDRLEN;

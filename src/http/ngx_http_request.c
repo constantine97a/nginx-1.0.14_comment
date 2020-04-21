@@ -287,7 +287,9 @@ ngx_http_init_request(ngx_event_t *rev)
     c = rev->data;
 	/**
 	 * 在ngx_http_init_connection中对读事件添加了timer，超时直接返回,
-	 * 超时时间就是配置文件中的client_header_timeout
+	 * 超时时间就是配置文件中的client_header_timeout,
+	 * 设置了超时timer后，在事件循环中process_event_and_timer中的检查事件是否过期
+	 *
 	 */
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
@@ -299,7 +301,7 @@ ngx_http_init_request(ngx_event_t *rev)
     c->requests++;
 	/* ngx_http_connection_t */
     hc = c->data;
-
+    //如果ngx_http_connection_t为空，需要新建一个ngx_http_connection_t
     if (hc == NULL) {
         hc = ngx_pcalloc(c->pool, sizeof(ngx_http_connection_t));
         if (hc == NULL) {
@@ -309,7 +311,7 @@ ngx_http_init_request(ngx_event_t *rev)
     }
 
     r = hc->request;
-
+    //判断ngx_http_request是否为空
     if (r) {
         //如果ngx_http_request_t有值，进行清零
         ngx_memzero(r, sizeof(ngx_http_request_t));
@@ -1214,6 +1216,7 @@ ngx_http_read_request_header(ngx_http_request_t *r)
     c = r->connection;
     rev = c->read;
 
+    //如果缓冲区中还有未解析的数据，退出
     n = r->header_in->last - r->header_in->pos;
     //如果header_in非空直接退出函数
     if (n > 0) {
@@ -1256,7 +1259,7 @@ ngx_http_read_request_header(ngx_http_request_t *r)
         return NGX_ERROR;
     }
     /**
-     * 讲header_in的last向后推n个数位
+     * header_in的last向后推n个数位
      */
     r->header_in->last += n;
 

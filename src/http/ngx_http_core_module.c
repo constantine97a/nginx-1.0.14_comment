@@ -1002,6 +1002,7 @@ ngx_http_handler(ngx_http_request_t *r)
 
     r->connection->unexpected_eof = 0;
 	/*初始化 r->phase_handler 不懂*/
+	//当前的请求不是内部跳转，当request->internal为１，表示为内部跳转，
     if (!r->internal) {
         switch (r->headers_in.connection_type) {
         case 0:
