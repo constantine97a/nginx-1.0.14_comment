@@ -66,7 +66,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     }
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
+    //如果请求content_length长度为０
     if (r->headers_in.content_length_n == 0) {
 
         if (r->request_body_in_file_only) {

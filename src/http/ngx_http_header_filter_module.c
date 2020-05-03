@@ -149,7 +149,15 @@ ngx_http_header_out_t  ngx_http_headers_out[] = {
     { ngx_null_string, 0 }
 };
 
-
+/**
+ * ngx_http_header_filter_module提供的ngx_http_header_filter方法则会根据HTTP规则把headers_out中的成员变量序列化为字符流，
+ * 并发送出去.
+ * 当ngx_http_header_filter方法无法一次性发送HTTP头部时，将会有以下两个现象同时发生。
+ *  请求的out成员中将会保存剩余的响应头部。
+ *  ngx_http_header_filter方法返回NGX_AGAIN
+ * @param r
+ * @return
+ */
 static ngx_int_t
 ngx_http_header_filter(ngx_http_request_t *r)
 {
@@ -175,7 +183,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
     }
 
     r->header_sent = 1;
-
+    //当请求不是主请求的时候，没有必要发送
     if (r != r->main) {
         return NGX_OK;
     }

@@ -3205,7 +3205,7 @@ ngx_http_close_connection(ngx_connection_t *c)
 #if (NGX_STAT_STUB)
     (void) ngx_atomic_fetch_add(ngx_stat_active, -1);
 #endif
-
+    //设置destroyed 标志位
     c->destroyed = 1;
 
     pool = c->pool;

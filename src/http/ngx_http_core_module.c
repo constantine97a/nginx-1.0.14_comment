@@ -1032,7 +1032,7 @@ ngx_http_handler(ngx_http_request_t *r)
     r->gzip_ok = 0;
     r->gzip_vary = 0;
 #endif
-	// 设置request的write_event_handler为ngx_http_core_run_phases
+	// 设置request的write_event_handler为ngx_http_core_run_phases,目的是什么？
     r->write_event_handler = ngx_http_core_run_phases;
 	//执行处理引擎
     ngx_http_core_run_phases(r);
@@ -1053,7 +1053,9 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
     ngx_int_t                   rc;
     ngx_http_phase_handler_t   *ph;
     ngx_http_core_main_conf_t  *cmcf;
-
+    /**
+     *获取core module configuration
+     */
     cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
 
     ph = cmcf->phase_engine.handlers;
@@ -1119,8 +1121,8 @@ ngx_http_core_generic_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
 /*用于处理server rewrite phase和rewrite phase,逻辑很简单就是执行响应的handler，
 因为phase handler执行流程的跳转是在post rewrite中完成的，所以这里只需要将r->phase_handler++顺序遍历其后的handler即可。*/
 /**
- * ngx_http_core_rewrite_phase方法充当了用于重写URL的NGX_HTTP_SERVER_REWRITE_PHASE和NGX_HTTP_REWRITE_PHASE这两个阶段的checker方法
- *
+ * ngx_http_core_rewrite_phase方法充当了用于重写URL的NGX_HTTP_SERVER_REWRITE_PHASE和NGX_HTTP_REWRITE_PHASE
+ * 这两个阶段的checker方法 *
  * ngx_http_core_rewrite_phase方法与ngx_http_core_generic_phase方法有一个显著的不同点：
  * 前者永远不会导致跨过同一个HTTP阶段的其他处理方法，
  * 就直接跳到下一个阶段来处理请求。原因其实很简单，

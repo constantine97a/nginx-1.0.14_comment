@@ -841,11 +841,11 @@ ngx_close_connection(ngx_connection_t *c)
         ngx_log_error(NGX_LOG_ALERT, c->log, 0, "connection already closed");
         return;
     }
-
+    //如果设置了read timer
     if (c->read->timer_set) {
         ngx_del_timer(c->read);
     }
-
+    //如果设置了writer timeer
     if (c->write->timer_set) {
         ngx_del_timer(c->write);
     }
